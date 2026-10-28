@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Huawei Cloud CodeArts",
+    "description": "Restores the Huawei Cloud CodeArts channel removed upstream in 2.5.9. A standalone DSH plugin: registers CodeArts Agent in the model picker, reuses existing accounts and credentials, and does not modify dsh-our-free-model."
+  }
+}

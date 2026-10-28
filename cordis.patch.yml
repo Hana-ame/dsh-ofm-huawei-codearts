@@ -1,0 +1,10 @@
+# ofm-huawei-codearts —— 以组合层插件恢复华为云 CodeArts provider。
+#
+# 上游 dsh-our-free-model 2.5.9 起删除了 CodeArts 渠道；本插件不修改它一个
+# 字节，只把 `codearts` provider 重新注册进 ctx.llm，复用 channel-pack 留在
+# $DSH_HOME/channel-pack/state.json 的账号索引与 CODEARTS_ACCOUNT_* 凭据。
+# 必须排在 dsh-our-free-model 之后加载（账号/凭据由它遗留的数据提供）。
+- insert:
+    - id: ofm-huawei-codearts
+      name: 'ofm-huawei-codearts'
+      config: {}

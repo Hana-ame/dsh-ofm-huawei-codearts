@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "华为云 CodeArts",
+    "description": "恢复上游 2.5.9 删除的华为云 CodeArts 渠道。独立 DSH 插件：在模型选择器注册 CodeArts Agent，复用已有账号与凭据，不修改 dsh-our-free-model。"
+  }
+}
