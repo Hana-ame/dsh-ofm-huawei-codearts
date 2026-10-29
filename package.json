@@ -1,6 +1,6 @@
 {
   "name": "dsh-ofm-huawei-codearts",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "恢复上游 2.5.9 删除的华为云 CodeArts 渠道：独立 DSH 插件，在模型选择器注册 CodeArts Agent，复用已有账号与凭据，不修改 dsh-our-free-model。",
@@ -21,5 +21,9 @@
     "@deepseek-ai/dsh-credentials": "^0.1.2-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1",
     "@deepseek-ai/dsh-llm": "^0.1.2-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1",
     "@deepseek-ai/schemastery": "^3.18.4"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "./scripts/build.sh"
   }
 }

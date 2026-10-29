@@ -32,6 +32,13 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { CodeArtsAuth } from './service.js'
 import { registerCodeArtsLlm } from './llm-adapter.js'
 import { createDirectFetch, attachDirectFetch } from './direct-fetch.js'
+import { signRequestHuawei } from './sign.js'
+import {
+  claimCodeArtsDailyCheckin,
+  createAutoCheckin,
+  createFileAutoCheckinStore,
+  resolveAutoCheckinHome,
+} from './auto-checkin.js'
 import type { CodeArtsCredential } from './types.js'
 
 export const name = 'dsh-ofm-huawei-codearts'
@@ -93,6 +100,36 @@ function candidateCredentialRefs(): string[] {
 }
 
 /**
+ * 列出所有可签到的 CodeArts 账号（id / 昵称 / credentialRef）。
+ *
+ * 优先用 state.json 里的账号索引；索引为空或被上游重写后，退回扫描凭据
+ * 存储里的 `CODEARTS_ACCOUNT_*` ref（与 LLM 适配器的兜底策略一致）。
+ */
+function codeArtsAccounts(): Array<{ id: string; nickname: string; credentialRef: string }> {
+  try {
+    const state = JSON.parse(fs.readFileSync(CHANNEL_STATE_FILE, 'utf8')) as {
+      accounts?: Array<{ id?: string; nickname?: string; provider?: string; enabled?: boolean; credentialRef?: string }>
+    }
+    const accounts = (state.accounts ?? [])
+      .filter(account => account.provider === 'codearts' && account.enabled !== false)
+      .map((account, index) => ({
+        id: String(account.id ?? `codearts-${index + 1}`),
+        nickname: String(account.nickname ?? ''),
+        credentialRef: String(account.credentialRef ?? ''),
+      }))
+      .filter(account => account.credentialRef.length > 0)
+    if (accounts.length > 0) return accounts
+  } catch {
+    // state.json 缺失/损坏：走下面的凭据扫描兜底
+  }
+  return credentialRefsFromStore().map((ref, index) => ({
+    id: `codearts-store-${index + 1}`,
+    nickname: '',
+    credentialRef: ref,
+  }))
+}
+
+/**
  * 逐个 ref 尝试解析，返回第一份可用的 CodeArts 凭据。
  *
  * 判断“可用”的最低要求是 access_key_id + secret_access_key；security_token
@@ -139,4 +176,31 @@ export function apply(ctx: any): void {
       if (found) await codeArtsAuth.refreshAccountCredential(found.ref)
     },
   })
+
+  // 每日自动签到：上游 dsh-our-free-model 不再覆盖 codearts 渠道后，这条能力
+  // 随渠道一起丢失；这里用同一份 auto-checkin.json 文档恢复，状态与上游
+  // 频道面板展示兼容。启动后延迟 30s（避免与续期争抢），今天未签到才执行。
+  const autoCheckin = createAutoCheckin({
+    store: createFileAutoCheckinStore({
+      home: resolveAutoCheckinHome(ctx),
+      warn: (message: string) => ctx.logger?.warn?.(message),
+    }),
+    listAccounts: async () => codeArtsAccounts(),
+    resolveCredential: async (ref: string) => {
+      try {
+        const resolved = await ctx.credentials.resolve(credentialRef(ref))
+        if (!resolved?.value) return undefined
+        const credential = JSON.parse(String(resolved.value)) as CodeArtsCredential
+        if (!credential.access_key_id || !credential.secret_access_key) return undefined
+        return credential
+      } catch {
+        return undefined
+      }
+    },
+    claim: (credential: CodeArtsCredential) =>
+      claimCodeArtsDailyCheckin(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
+    warn: (message: string) => ctx.logger?.warn?.(message),
+  })
+  autoCheckin.start()
+  ctx.effect(() => () => autoCheckin.stop(), 'dsh-ofm-huawei-codearts: auto checkin')
 }

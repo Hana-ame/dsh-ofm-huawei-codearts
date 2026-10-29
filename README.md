@@ -97,8 +97,27 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
 - 日志里有：
   `dsh-ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 N 个凭据 ref）`。
 
+## 每日自动签到
+
+上游 `dsh-our-free-model` 自 2.5.9 起删除 CodeArts 渠道后，随渠道一起丢失的
+「每日自动签到」在本插件里重新实现（`src/auto-checkin.js`）：
+
+- 插件启动后延迟 30 秒（可用 `DSH_CHANNEL_PACK_AUTO_CHECKIN_DELAY_MS` 覆盖，
+  `0` 合法），若开关打开且**今天（UTC+8）还没跑过**，就串行遍历
+  `channel-pack/state.json` 里启用的 CodeArts 账号，逐个执行
+  「查询账号信息 → 查询活动列表 → 领取每日登录积分 → 确认」；
+- 结果写回 `$DSH_HOME/channel-pack/auto-checkin.json`（schema
+  `dsh-codearts-auth/auto-checkin/v1`，与上游既有文档完全兼容），当天不再触发；
+- 状态文件与上游频道面板共用：`our-free-model` 的「每日自动签到」开关/状态
+  读同一份文档，因此在那边关掉开关也会生效（每轮判定前都会重读磁盘）；
+- 只有 claimed / already-claimed 才记为「今天已处理」；全部失败（代理抖动、
+  凭据过期）**不记账**，下次启动自动重试；
+- 开关判断只有**显式 `false`** 才算关闭（缺字段/旧文档一律按打开处理）。
+
 ## 已知边界
 
 - 不显示 OFM 的“白嫖模型接入”页里的华为卡片（见上）；
 - 不恢复 magpie 工作台的 `huaweicloud` MaaS 预设（那是 OFM 内部策略，只有 fork 能改）；
-- 凭据刷新令牌过期后没有登录页，需要重新登录（可用 CodeArts IDE 或旧 fork 的渠道页）。
+- 凭据刷新令牌过期后没有登录页，需要重新登录（可用 CodeArts IDE 或旧 fork 的渠道页）；
+- 自动签到依赖凭据 AK/SK/security_token；凭据过期时该轮记为失败、不写日期，
+  刷新凭据后下次启动会自动补签。
