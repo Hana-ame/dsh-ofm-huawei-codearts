@@ -1,4 +1,4 @@
-# 华为云 CodeArts 插件（ofm-huawei-codearts）
+# 华为云 CodeArts 插件（dsh-ofm-huawei-codearts）
 
 把上游 `dsh-our-free-model` 在 2.5.9 删除的**华为云 CodeArts** 渠道加回来。
 
@@ -18,7 +18,7 @@ DSH 内核
  ├─ dsh-our-free-model（上游，原样不动）
  │    └─ 10 个免费渠道，不含华为
  │
- └─ ofm-huawei-codearts（本插件）
+ └─ dsh-ofm-huawei-codearts（本插件）
       └─ 只注册 codearts 一个 provider
 ```
 
@@ -41,7 +41,7 @@ DSH 内核
 ## 目录结构
 
 ```
-ofm-huawei-codearts/
+dsh-ofm-huawei-codearts/
 ├─ package.json          插件清单：名字、描述、宿主 peer 依赖
 ├─ cordis.patch.yml      告诉 DSH 启动时插入本插件
 ├─ locale/
@@ -81,7 +81,7 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
 
 ## 安装/启用
 
-1. 插件目录放到 `~/.dsh/plugins/ofm-huawei-codearts`；
+1. 插件目录放到 `~/.dsh/plugins/dsh-ofm-huawei-codearts`；
 2. 在 profile 的 `package.json` 里加 bundle 和 link 依赖（排在
    `dsh-our-free-model` 之后）；
 3. 重启 dsh。
@@ -95,7 +95,7 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
 - 插件列表里能看到 **华为云 CodeArts**，状态 running；
 - 模型选择器里出现 **CodeArts Agent**；
 - 日志里有：
-  `ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 N 个凭据 ref）`。
+  `dsh-ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 N 个凭据 ref）`。
 
 ## 已知边界
 

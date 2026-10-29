@@ -32727,7 +32727,7 @@ function parseRateLimitError(body, currentModel, status) {
 }
 
 // src/index.ts
-var name = "ofm-huawei-codearts";
+var name = "dsh-ofm-huawei-codearts";
 var inject = ["llm", "credentials"];
 var DSH_HOME_DIR = process.env.DSH_HOME ?? path2.join(os.homedir(), ".dsh");
 var CHANNEL_STATE_FILE = path2.join(DSH_HOME_DIR, "channel-pack", "state.json");
@@ -32779,7 +32779,7 @@ function apply(ctx) {
   });
   const codeArtsAuth = new CodeArtsAuth(ctx, { fetcher: transport.fetch });
   const refCount = candidateCredentialRefs().length;
-  ctx.logger?.info?.(`ofm-huawei-codearts: \u6CE8\u518C codearts provider\uFF08\u78C1\u76D8\u4E0A\u627E\u5230 ${refCount} \u4E2A\u51ED\u636E ref\uFF09`);
+  ctx.logger?.info?.(`dsh-ofm-huawei-codearts: \u6CE8\u518C codearts provider\uFF08\u78C1\u76D8\u4E0A\u627E\u5230 ${refCount} \u4E2A\u51ED\u636E ref\uFF09`);
   registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。

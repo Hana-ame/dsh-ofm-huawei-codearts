@@ -34,7 +34,7 @@ import { registerCodeArtsLlm } from './llm-adapter.js'
 import { createDirectFetch, attachDirectFetch } from './direct-fetch.js'
 import type { CodeArtsCredential } from './types.js'
 
-export const name = 'ofm-huawei-codearts'
+export const name = 'dsh-ofm-huawei-codearts'
 export const inject = ['llm', 'credentials']
 
 /** DSH 数据目录；测试或隔离运行时可用 DSH_HOME 覆盖。 */
@@ -127,7 +127,7 @@ export function apply(ctx: any): void {
 
   const codeArtsAuth = new CodeArtsAuth(ctx, { fetcher: transport.fetch })
   const refCount = candidateCredentialRefs().length
-  ctx.logger?.info?.(`ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 ${refCount} 个凭据 ref）`)
+  ctx.logger?.info?.(`dsh-ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 ${refCount} 个凭据 ref）`)
 
   registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
