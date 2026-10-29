@@ -133,11 +133,24 @@ CodeArts 的 STS 临时令牌约 1–2 小时寿命、**refresh_token 一次性*
 即失效），一旦续期失败就只能重新授权。点击后 `POST /login` 起两步式 OAuth，
 浏览器打开 portal 授权页，完成后凭据自动回写，无需重装插件或跑脚本。
 
+接口里与「过期」相关的只有两个字段（没有逐笔发放的到期日）：
+
+- `start_date` / `end_date`：积分包周期（当前体验版 **2026-10-07 ~ 2026-11-08**，
+  约一个月；`start_date` 与账号开通体验版积分的日期一致）；
+- `package_credit_expiring_amount`：**即将过期的剩余额度**（金额，不是日期）。
+  实测它随扣费等量减少（60.18 → 46.71 → 22.2 → 0，每次减少量等于已用增量），
+  说明存在更早到期的小额度桶、会被优先扣费；归零只表示该桶已用完。
+
+周期结束后（`end_date`）未使用的积分预计失效——这是根据字段语义与开通日期
+推断的（`statistics/plugin` 不下发有效期规则字段，旧实现注释也明确记录过
+这一点），精确到期日建议看 CodeArts 控制台「积分获取记录」页。
+
 ```json
 {
   "ok": true,
   "balance": {
     "packageName": "体验版",
+    "cycle": { "startDate": "2026-10-07", "endDate": "2026-11-08" },
     "total": { "amount": 20600, "used": 1217.39, "remain": 19382.61, "expiring": 22.2 },
     "basic": { "amount": 500, "used": 0, "remain": 500, "expiring": 0 },
     "bonus": { "amount": 20100, "used": 1217.39, "remain": 18882.61, "expiring": 22.2 }

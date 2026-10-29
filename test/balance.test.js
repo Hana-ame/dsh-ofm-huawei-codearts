@@ -136,3 +136,24 @@ test('balance route refreshes the credential once when the token expired', async
   assert.deepEqual(attempts, ['old', 'new'])
   assert.equal(JSON.parse(res.body).balance.total.remain, 1)
 })
+
+test('fetchCodeArtsCreditBalance exposes the package cycle dates', async () => {
+  const { fetchCodeArtsCreditBalance } = await import('../src/auto-checkin.js')
+  const fetcher = async () => new Response(JSON.stringify({
+    metrics: [
+      { name: 'usageTotalPackageCredit', package_credit_amount: 20600, package_credit_used: 1, package_credit_remain: 20599, package_credit_expiring_amount: 0 },
+    ],
+    package: { is_credit_package: true, is_token_package: false, package_name_cn: '体验版', status: 'normal' },
+    start_date: '2026-10-07',
+    end_date: '2026-11-08',
+  }), { status: 200, headers: { 'content-type': 'application/json' } })
+  const result = await fetchCodeArtsCreditBalance(
+    { access_key_id: 'ak', secret_access_key: 'sk', security_token: 'st' },
+    { sign: async () => new Map(), fetcher },
+  )
+  assert.equal(result.ok, true)
+  assert.equal(result.balance.cycle.startDate, '2026-10-07')
+  assert.equal(result.balance.cycle.endDate, '2026-11-08')
+  assert.equal(result.balance.total.remain, 20599)
+  assert.equal(result.balance.packageName, '体验版')
+})

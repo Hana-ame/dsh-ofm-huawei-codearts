@@ -416,6 +416,12 @@ export async function fetchCodeArtsCreditBalance(credential, deps) {
       packageStatus: readString(pkg, 'status'),
       isCreditPackage: readBool(pkg, 'is_credit_package'),
       isTokenPackage: readBool(pkg, 'is_token_package'),
+      // 积分包的周期：接口只给 start_date/end_date 两个日期（当前体验版为
+      // 2026-10-07 ~ 2026-11-08），没有逐笔发放的到期时间。
+      cycle: {
+        startDate: readString(data, 'start_date'),
+        endDate: readString(data, 'end_date'),
+      },
       ...balance,
     },
   }
