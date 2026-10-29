@@ -290,6 +290,7 @@ export class CodeArtsAuth extends Service {
     refName: string,
     pool?: AccountPool,
     accountId?: string,
+    options: { force?: boolean } = {},
   ): Promise<void> {
     await this.queueFor(refName).run(async () => {
       const ref = credentialRef(refName)
@@ -298,7 +299,11 @@ export class CodeArtsAuth extends Service {
       if (!isCodeArtsRefreshable(credential)) throw new Error('无 refresh_token，请重新登录')
       // 排队等锁期间，别处（另一条续期入口）可能已经把它续好了：
       // 有效期内就直接对账返回，不再发第二次请求。
-      if (!shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
+      //
+      // `force`：服务端已明确判令牌过期（如 APIG.0602 security token has
+      // expired）时跳过本地预判——实测存在本地 expires_at 仍显示有效、服务端
+      // 却已判失效的情况（多实例/服务端提前吊销），此时不强制刷新会一直 400。
+      if (options.force !== true && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
         await syncAccountExpiry({
           pool,
           provider: 'codearts',

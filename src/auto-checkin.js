@@ -371,6 +371,56 @@ export async function claimCodeArtsDailyCheckin(credential, deps) {
   }
 }
 
+/**
+ * 读取积分余额（统计接口的 credit metric）。
+ *
+ * 字段命名沿用华为云 `statistics/plugin` 响应：`usageTotalPackageCredit` 是
+ * 总积分包，另有基础/按需/赠送三个分类包。分别取 amount / used / remain /
+ * expiring（`package_credit_expiring_amount`）。
+ */
+export function parseCreditBalanceMetrics(metrics) {
+  if (!Array.isArray(metrics)) return undefined
+  const pick = name => {
+    const item = metrics.find(entry => entry !== null && typeof entry === 'object' && entry.name === name)
+    if (item === undefined) return undefined
+    return {
+      amount: readNumber(item, 'package_credit_amount'),
+      used: readNumber(item, 'package_credit_used'),
+      remain: readNumber(item, 'package_credit_remain'),
+      expiring: readNumber(item, 'package_credit_expiring_amount'),
+    }
+  }
+  const total = pick('usageTotalPackageCredit')
+  if (total === undefined) return undefined
+  return {
+    total,
+    basic: pick('usageBasicPackageCredit'),
+    onDemand: pick('usageOnDemandPackageCredit'),
+    bonus: pick('usageBonusPackageCredit'),
+  }
+}
+
+/** 查询 CodeArts 积分余额；返回 `{ ok, balance, message? }`。 */
+export async function fetchCodeArtsCreditBalance(credential, deps) {
+  const url = `${SNAP_ENGINE_URL}${PACKAGE_INFO_PATH}`
+  const result = await signedSnapRequest(deps, 'GET', url, credential, undefined)
+  if (!result.ok) return { ok: false, message: result.message }
+  const data = result.data
+  const pkg = readRecord(data, 'package')
+  const balance = parseCreditBalanceMetrics(data.metrics)
+  if (balance === undefined) return { ok: false, message: '响应缺少积分 metric' }
+  return {
+    ok: true,
+    balance: {
+      packageName: readString(pkg, 'package_name_cn') || readString(pkg, 'package_name_en'),
+      packageStatus: readString(pkg, 'status'),
+      isCreditPackage: readBool(pkg, 'is_credit_package'),
+      isTokenPackage: readBool(pkg, 'is_token_package'),
+      ...balance,
+    },
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 自动签到执行体
 // ---------------------------------------------------------------------------
@@ -502,7 +552,8 @@ export function createAutoCheckin(deps) {
         if (credential === undefined) {
           outcome = { kind: 'failed', code: -1, message: '凭据未配置' }
         } else {
-          outcome = await deps.claim(credential)
+          // 把 ref 一起传给 claim：令牌过期时调用方可以按 ref 刷新后重试。
+          outcome = await deps.claim(credential, account.credentialRef)
         }
       } catch (error) {
         deps.warn?.(`[auto-checkin] 账号 ${account.id} 签到异常: ${String(error)}`)

@@ -21030,13 +21030,13 @@ var CodeArtsAuth = class extends Service {
    * @param pool 账号池；提供时把新 `expiresAt` / `refreshable` 写回。
    * @param accountId 账号 id，调用方已知时显式传入（反查会跳过已停用账号）。
    */
-  async refreshAccountCredential(refName, pool, accountId) {
+  async refreshAccountCredential(refName, pool, accountId, options = {}) {
     await this.queueFor(refName).run(async () => {
       const ref = credentialRef(refName);
       const credential = await this.readCredential(refName);
       if (credential === void 0) throw new Error("\u51ED\u636E\u672A\u914D\u7F6E");
       if (!isCodeArtsRefreshable(credential)) throw new Error("\u65E0 refresh_token\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55");
-      if (!shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
+      if (options.force !== true && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
         await syncAccountExpiry({
           pool,
           provider: "codearts",
@@ -23588,6 +23588,46 @@ async function claimCodeArtsDailyCheckin(credential, deps) {
     isStreakDay: false
   };
 }
+function parseCreditBalanceMetrics(metrics) {
+  if (!Array.isArray(metrics)) return void 0;
+  const pick = (name2) => {
+    const item = metrics.find((entry) => entry !== null && typeof entry === "object" && entry.name === name2);
+    if (item === void 0) return void 0;
+    return {
+      amount: readNumber(item, "package_credit_amount"),
+      used: readNumber(item, "package_credit_used"),
+      remain: readNumber(item, "package_credit_remain"),
+      expiring: readNumber(item, "package_credit_expiring_amount")
+    };
+  };
+  const total = pick("usageTotalPackageCredit");
+  if (total === void 0) return void 0;
+  return {
+    total,
+    basic: pick("usageBasicPackageCredit"),
+    onDemand: pick("usageOnDemandPackageCredit"),
+    bonus: pick("usageBonusPackageCredit")
+  };
+}
+async function fetchCodeArtsCreditBalance(credential, deps) {
+  const url = `${SNAP_ENGINE_URL}${PACKAGE_INFO_PATH}`;
+  const result = await signedSnapRequest(deps, "GET", url, credential, void 0);
+  if (!result.ok) return { ok: false, message: result.message };
+  const data = result.data;
+  const pkg = readRecord(data, "package");
+  const balance = parseCreditBalanceMetrics(data.metrics);
+  if (balance === void 0) return { ok: false, message: "\u54CD\u5E94\u7F3A\u5C11\u79EF\u5206 metric" };
+  return {
+    ok: true,
+    balance: {
+      packageName: readString(pkg, "package_name_cn") || readString(pkg, "package_name_en"),
+      packageStatus: readString(pkg, "status"),
+      isCreditPackage: readBool(pkg, "is_credit_package"),
+      isTokenPackage: readBool(pkg, "is_token_package"),
+      ...balance
+    }
+  };
+}
 function formatCreditAmount(value) {
   if (!Number.isFinite(value)) return "?";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -23693,7 +23733,7 @@ function createAutoCheckin(deps) {
         if (credential === void 0) {
           outcome = { kind: "failed", code: -1, message: "\u51ED\u636E\u672A\u914D\u7F6E" };
         } else {
-          outcome = await deps.claim(credential);
+          outcome = await deps.claim(credential, account.credentialRef);
         }
       } catch (error) {
         deps.warn?.(`[auto-checkin] \u8D26\u53F7 ${account.id} \u7B7E\u5230\u5F02\u5E38: ${String(error)}`);
@@ -23784,6 +23824,132 @@ function createAutoCheckin(deps) {
   };
 }
 
+// src/balance-route.js
+function isCredentialExpiredMessage(message2) {
+  if (typeof message2 !== "string") return false;
+  return /security token|token has expired|token expired|credential.*(expired|invalid)|APIG\.0602|HTTP (400|401|403)\b/i.test(message2);
+}
+function createBalanceRoute(deps) {
+  return async function handler(req, res) {
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    const send = (status, body) => {
+      res.writeHead(status, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store"
+      });
+      res.end(JSON.stringify(body));
+    };
+    if (req.method !== "GET") {
+      send(405, { ok: false, error: { message: "method not allowed" } });
+      return;
+    }
+    if (!url.pathname.replace(/\/+$/, "").endsWith("/balance")) {
+      send(404, { ok: false, error: { message: "not found" } });
+      return;
+    }
+    try {
+      const account = await deps.resolveAccount();
+      if (account === void 0 || account === null) {
+        send(503, { ok: false, error: { message: "\u6CA1\u6709\u53EF\u7528\u7684 CodeArts \u51ED\u636E" } });
+        return;
+      }
+      let result = await deps.fetchBalance(account.credential);
+      if (!result?.ok && typeof deps.refreshAccount === "function" && isCredentialExpiredMessage(result.message)) {
+        const refreshed = await deps.refreshAccount(account);
+        if (refreshed !== void 0 && refreshed !== null) result = await deps.fetchBalance(refreshed.credential);
+      }
+      if (!result?.ok) {
+        send(502, { ok: false, error: { message: result?.message ?? "\u4F59\u989D\u67E5\u8BE2\u5931\u8D25" } });
+        return;
+      }
+      const checkin = deps.readCheckin();
+      send(200, {
+        ok: true,
+        balance: result.balance,
+        checkin: {
+          enabled: checkin.enabled,
+          lastDate: checkin.lastDate,
+          lastResult: checkin.lastResult,
+          lastAt: checkin.lastAt,
+          channels: checkin.channels
+        },
+        today: utc8DateString()
+      });
+    } catch (error) {
+      send(500, { ok: false, error: { message: error instanceof Error ? error.message : String(error) } });
+    }
+  };
+}
+
+// src/login-route.js
+function createLoginRoute(deps) {
+  let flow = null;
+  async function startLogin() {
+    if (flow !== null && flow.state === "pending") return flow;
+    flow = { state: "pending", url: "", message: "" };
+    let started;
+    try {
+      started = await deps.startLogin();
+    } catch (error) {
+      flow = { state: "failed", url: "", message: error instanceof Error ? error.message : String(error) };
+      return flow;
+    }
+    flow.url = started.loginUrl;
+    const url = started.loginUrl;
+    started.result.then(
+      () => {
+        flow = { state: "succeeded", url, message: "" };
+      },
+      (error) => {
+        flow = { state: "failed", url, message: error instanceof Error ? error.message : String(error) };
+      }
+    );
+    return flow;
+  }
+  return async function handler(req, res) {
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    const pathname = url.pathname.replace(/\/+$/, "");
+    const send = (status, body) => {
+      res.writeHead(status, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store"
+      });
+      res.end(JSON.stringify(body));
+    };
+    if (req.method === "OPTIONS") {
+      res.writeHead(204).end();
+      return;
+    }
+    if (req.method === "POST" && pathname.endsWith("/login")) {
+      const current = await startLogin();
+      send(200, { ok: true, state: current.state, url: current.url, message: current.message });
+      return;
+    }
+    if (req.method === "GET" && pathname.endsWith("/login/status")) {
+      send(200, {
+        ok: true,
+        state: flow?.state ?? "idle",
+        message: flow?.message ?? ""
+      });
+      return;
+    }
+    send(404, { ok: false, error: { message: "not found" } });
+  };
+}
+
+// src/admin-route.js
+function createAdminRoute(deps) {
+  const balance = createBalanceRoute(deps.balanceDeps);
+  const login = createLoginRoute(deps.loginDeps);
+  return async function handler(req, res) {
+    const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname.replace(/\/+$/, "");
+    if (pathname.endsWith("/login") || pathname.endsWith("/login/status")) {
+      return login(req, res);
+    }
+    return balance(req, res);
+  };
+}
+
 // src/index.ts
 var name = "dsh-ofm-huawei-codearts";
 var inject = ["llm", "credentials"];
@@ -23845,6 +24011,29 @@ async function resolveCodeArtsCredential(ctx) {
   }
   return void 0;
 }
+function primaryCredentialRef() {
+  return credentialRefsFromChannelState()[0] ?? credentialRefsFromStore()[0] ?? LEGACY_CREDENTIAL_REF;
+}
+async function credentialByRef(ctx, ref) {
+  try {
+    const resolved = await ctx.credentials.resolve(credentialRef3(ref));
+    if (!resolved?.value) return void 0;
+    const credential = JSON.parse(String(resolved.value));
+    if (!credential.access_key_id || !credential.secret_access_key) return void 0;
+    return credential;
+  } catch {
+    return void 0;
+  }
+}
+async function refreshCredentialByRef(ctx, codeArtsAuth, ref) {
+  try {
+    await codeArtsAuth.refreshAccountCredential(ref, void 0, void 0, { force: true });
+  } catch (error) {
+    ctx.logger?.warn?.(`dsh-ofm-huawei-codearts: \u5237\u65B0\u51ED\u636E\u5931\u8D25\uFF08${ref}\uFF09: ${String(error)}`);
+    return void 0;
+  }
+  return credentialByRef(ctx, ref);
+}
 function apply(ctx) {
   const transport = createDirectFetch({});
   const detachTransport = attachDirectFetch(transport.fetch);
@@ -23855,6 +24044,9 @@ function apply(ctx) {
   const codeArtsAuth = new CodeArtsAuth(ctx, { fetcher: transport.fetch });
   const refCount = candidateCredentialRefs().length;
   ctx.logger?.info?.(`dsh-ofm-huawei-codearts: \u6CE8\u518C codearts provider\uFF08\u78C1\u76D8\u4E0A\u627E\u5230 ${refCount} \u4E2A\u51ED\u636E ref\uFF09`);
+  for (const ref of candidateCredentialRefs()) {
+    void refreshCredentialByRef(ctx, codeArtsAuth, ref);
+  }
   registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。
@@ -23882,11 +24074,39 @@ function apply(ctx) {
         return void 0;
       }
     },
-    claim: (credential) => claimCodeArtsDailyCheckin(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
+    claim: async (credential, ref) => {
+      const deps = { sign: signRequestHuawei, fetcher: transport.fetch };
+      const first = await claimCodeArtsDailyCheckin(credential, deps);
+      if (first.kind !== "failed" || !isCredentialExpiredMessage(first.message ?? "")) return first;
+      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref);
+      return refreshed === void 0 ? first : claimCodeArtsDailyCheckin(refreshed, deps);
+    },
     warn: (message2) => ctx.logger?.warn?.(message2)
   });
   autoCheckin.start();
   ctx.effect(() => () => autoCheckin.stop(), "dsh-ofm-huawei-codearts: auto checkin");
+  ctx.inject(["webServer"], (scoped) => {
+    const handler = createAdminRoute({
+      balanceDeps: {
+        resolveAccount: () => resolveCodeArtsCredential(ctx),
+        refreshAccount: async (account) => {
+          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref);
+          return credential === void 0 ? void 0 : { ref: account.ref, credential };
+        },
+        fetchBalance: (credential) => fetchCodeArtsCreditBalance(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
+        readCheckin: () => createFileAutoCheckinStore({ home: resolveAutoCheckinHome(ctx) }).load()
+      },
+      // refresh_token 是一次性的，失效后只能重新授权：设置页给一个按钮，
+      // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。
+      loginDeps: {
+        startLogin: () => codeArtsAuth.startLogin({ refName: primaryCredentialRef() })
+      }
+    });
+    scoped.effect(
+      () => scoped.webServer.register({ kind: "prefix", path: "/api/dsh-ofm-huawei-codearts", handler }),
+      "dsh-ofm-huawei-codearts: balance route"
+    );
+  });
 }
 export {
   apply,

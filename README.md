@@ -114,6 +114,39 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
   凭据过期）**不记账**，下次启动自动重试；
 - 开关判断只有**显式 `false`** 才算关闭（缺字段/旧文档一律按打开处理）。
 
+## 设置页：积分余额与签到状态
+
+插件自带一个设置页栏目「华为云 CodeArts」（`client.js`，注册到
+`settings.section`，order 37），显示：
+
+- **积分余额**：总积分包剩余 / 总额 / 已用 / 即将过期，以及基础/按需/赠送
+  三个分类包的明细，另有套餐名；
+- **每日签到状态**：今日是否已签、上次结果、上次签到日期/执行时间。
+
+数据来自插件自带路由 `GET /api/dsh-ofm-huawei-codearts/balance`
+（`src/balance-route.js`）：服务端用账号 AK/SK 签名查询 CodeArts 统计接口，
+**AK/SK 不会下发到浏览器**。临时令牌过期（APIG.0602 `security token has
+expired`）时，路由会先刷新一次凭据再重试；刷新失败才返回 502。
+
+设置页同一栏目还有「**重新登录 CodeArts**」按钮（`src/login-route.js`）：
+CodeArts 的 STS 临时令牌约 1–2 小时寿命、**refresh_token 一次性**（换新后旧
+即失效），一旦续期失败就只能重新授权。点击后 `POST /login` 起两步式 OAuth，
+浏览器打开 portal 授权页，完成后凭据自动回写，无需重装插件或跑脚本。
+
+```json
+{
+  "ok": true,
+  "balance": {
+    "packageName": "体验版",
+    "total": { "amount": 20600, "used": 1217.39, "remain": 19382.61, "expiring": 22.2 },
+    "basic": { "amount": 500, "used": 0, "remain": 500, "expiring": 0 },
+    "bonus": { "amount": 20100, "used": 1217.39, "remain": 18882.61, "expiring": 22.2 }
+  },
+  "checkin": { "enabled": true, "lastDate": "2026-10-30", "lastResult": "1 个渠道：1 个账号领取成功（+100积分）" },
+  "today": "2026-10-30"
+}
+```
+
 ## 已知边界
 
 - 不显示 OFM 的“白嫖模型接入”页里的华为卡片（见上）；

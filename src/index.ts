@@ -33,10 +33,13 @@ import { CodeArtsAuth } from './service.js'
 import { registerCodeArtsLlm } from './llm-adapter.js'
 import { createDirectFetch, attachDirectFetch } from './direct-fetch.js'
 import { signRequestHuawei } from './sign.js'
+import { isCredentialExpiredMessage } from './balance-route.js'
+import { createAdminRoute } from './admin-route.js'
 import {
   claimCodeArtsDailyCheckin,
   createAutoCheckin,
   createFileAutoCheckinStore,
+  fetchCodeArtsCreditBalance,
   resolveAutoCheckinHome,
 } from './auto-checkin.js'
 import type { CodeArtsCredential } from './types.js'
@@ -153,6 +156,43 @@ async function resolveCodeArtsCredential(
   return undefined
 }
 
+/** 当前首选凭据 ref（设置页「重新登录」写回的目标账号）。 */
+function primaryCredentialRef(): string {
+  return credentialRefsFromChannelState()[0]
+    ?? credentialRefsFromStore()[0]
+    ?? LEGACY_CREDENTIAL_REF
+}
+
+/** 按 ref 解析并校验一份 CodeArts 凭据（AK/SK 最低要求）。 */
+async function credentialByRef(ctx: any, ref: string): Promise<CodeArtsCredential | undefined> {
+  try {
+    const resolved = await ctx.credentials.resolve(credentialRef(ref))
+    if (!resolved?.value) return undefined
+    const credential = JSON.parse(String(resolved.value)) as CodeArtsCredential
+    if (!credential.access_key_id || !credential.secret_access_key) return undefined
+    return credential
+  } catch {
+    return undefined
+  }
+}
+
+/** 刷新指定账号的凭据并返回刷新后的凭据；刷新失败返回 undefined。 */
+async function refreshCredentialByRef(
+  ctx: any,
+  codeArtsAuth: CodeArtsAuth,
+  ref: string,
+): Promise<CodeArtsCredential | undefined> {
+  try {
+    // 只在服务端已明确判令牌过期时调用，跳过本地 expires_at 预判（force）：
+    // 实测本地时间未到、服务端却已吊销的过期是真实存在的。
+    await codeArtsAuth.refreshAccountCredential(ref, undefined, undefined, { force: true })
+  } catch (error) {
+    ctx.logger?.warn?.(`dsh-ofm-huawei-codearts: 刷新凭据失败（${ref}）: ${String(error)}`)
+    return undefined
+  }
+  return credentialByRef(ctx, ref)
+}
+
 export function apply(ctx: any): void {
   // 华为请求需要 DPoP/SDK-HMAC 签名，这里使用独立的 undici Agent。
   const transport = createDirectFetch({})
@@ -165,6 +205,14 @@ export function apply(ctx: any): void {
   const codeArtsAuth = new CodeArtsAuth(ctx, { fetcher: transport.fetch })
   const refCount = candidateCredentialRefs().length
   ctx.logger?.info?.(`dsh-ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 ${refCount} 个凭据 ref）`)
+
+  // 启动首轮强制续期：STS 临时令牌寿命短（约 1 小时），进程启动时磁盘上的
+  // 凭据很可能已过期。上游 channel-pack 的调度器也是「启动即刷一轮」；本插件
+  // 精简掉了账号池调度器，这里做等价的最小实现（失败只告警，LLM 路径仍有
+  // 401 兜底，不影响 provider 注册）。
+  for (const ref of candidateCredentialRefs()) {
+    void refreshCredentialByRef(ctx, codeArtsAuth, ref)
+  }
 
   registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
@@ -197,10 +245,43 @@ export function apply(ctx: any): void {
         return undefined
       }
     },
-    claim: (credential: CodeArtsCredential) =>
-      claimCodeArtsDailyCheckin(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
+    claim: async (credential: CodeArtsCredential, ref: string) => {
+      const deps = { sign: signRequestHuawei, fetcher: transport.fetch }
+      const first = await claimCodeArtsDailyCheckin(credential, deps)
+      if (first.kind !== 'failed' || !isCredentialExpiredMessage(first.message ?? '')) return first
+      // 临时令牌过期：刷新一次再重试（同 LLM 适配器的 401 兜底策略）。
+      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref)
+      return refreshed === undefined ? first : claimCodeArtsDailyCheckin(refreshed, deps)
+    },
     warn: (message: string) => ctx.logger?.warn?.(message),
   })
   autoCheckin.start()
   ctx.effect(() => () => autoCheckin.stop(), 'dsh-ofm-huawei-codearts: auto checkin')
+
+  // 设置页栏目（client.js）的数据源：GET /api/dsh-ofm-huawei-codearts/balance
+  // 返回积分余额与上次签到结果。webServer 只在 web profile 存在，headless 组合
+  // 少了这个路由也不影响 provider。
+  ctx.inject(['webServer'], (scoped: any) => {
+    const handler = createAdminRoute({
+      balanceDeps: {
+        resolveAccount: () => resolveCodeArtsCredential(ctx),
+        refreshAccount: async (account: { ref: string }) => {
+          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref)
+          return credential === undefined ? undefined : { ref: account.ref, credential }
+        },
+        fetchBalance: (credential: CodeArtsCredential) =>
+          fetchCodeArtsCreditBalance(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
+        readCheckin: () => createFileAutoCheckinStore({ home: resolveAutoCheckinHome(ctx) }).load(),
+      },
+      // refresh_token 是一次性的，失效后只能重新授权：设置页给一个按钮，
+      // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。
+      loginDeps: {
+        startLogin: () => codeArtsAuth.startLogin({ refName: primaryCredentialRef() }),
+      },
+    })
+    scoped.effect(
+      () => scoped.webServer.register({ kind: 'prefix', path: '/api/dsh-ofm-huawei-codearts', handler }),
+      'dsh-ofm-huawei-codearts: balance route',
+    )
+  })
 }
