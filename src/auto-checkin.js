@@ -43,6 +43,12 @@ export const AUTO_CHECKIN_DELAY_ENV = 'DSH_CHANNEL_PACK_AUTO_CHECKIN_DELAY_MS'
 /** 默认延迟：30 秒。 */
 export const DEFAULT_AUTO_CHECKIN_DELAY_MS = 30_000
 
+/** 每日复查间隔环境变量：进程常驻时靠它跨天触发（默认 30 分钟）。 */
+export const AUTO_CHECKIN_INTERVAL_ENV = 'DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS'
+
+/** 默认复查间隔：30 分钟（跨天最多延迟 30 分钟，成本极低：当天已跑会直接跳过）。 */
+export const DEFAULT_AUTO_CHECKIN_INTERVAL_MS = 30 * 60 * 1000
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_CHANNEL_ENTRIES = 24
 
@@ -57,6 +63,14 @@ export function autoCheckinDelayMs(env = process.env) {
   if (typeof raw !== 'string' || raw.trim().length === 0) return DEFAULT_AUTO_CHECKIN_DELAY_MS
   const parsed = Number(raw.trim())
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_AUTO_CHECKIN_DELAY_MS
+}
+
+/** 复查间隔毫秒：环境变量非法或缺失时用默认；`0` 表示关闭周期复查。 */
+export function autoCheckinIntervalMs(env = process.env) {
+  const raw = env[AUTO_CHECKIN_INTERVAL_ENV]
+  if (typeof raw !== 'string' || raw.trim().length === 0) return DEFAULT_AUTO_CHECKIN_INTERVAL_MS
+  const parsed = Number(raw.trim())
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_AUTO_CHECKIN_INTERVAL_MS
 }
 
 function sanitizeChannels(raw) {
@@ -260,7 +274,17 @@ async function signedSnapRequest(deps, method, url, credential, body) {
     }
     return unwrapSnapEnvelope(parsed)
   } catch (error) {
-    return { ok: false, code: -1, message: error instanceof Error ? error.message : String(error) }
+    // 把 cause 链里的 code 带出来：代理/网络失败常被包成泛化文案，
+    // 没有底层 code 时无法区分「代理不通」和「DNS/TLS 失败」。
+    const details = []
+    let current = error
+    for (let depth = 0; depth < 4 && current; depth += 1) {
+      if (depth === 0 && typeof current.message === 'string' && current.message.length > 0) details.push(current.message)
+      if (typeof current.code === 'string' && current.code.length > 0) details.push(current.code)
+      current = current.cause
+    }
+    const message = details.length > 0 ? details.join(' | ') : String(error)
+    return { ok: false, code: -1, message }
   }
 }
 
@@ -599,6 +623,23 @@ export function createAutoCheckin(deps) {
     deps.warn?.(`[auto-checkin] 自动签到完成（${today()}）：${doc.lastResult}`)
   }
 
+  let intervalTimer = null
+
+  /**
+   * 周期复查：进程常驻时，跨天后由它触发当天签到。
+   *
+   * 为什么需要：`runIfDue` 只在 start() 时调一次的话，DSH 不重启就永远
+   * 不会签第二天——上游 channel-pack 的调度器也只在启动首轮触发，属于
+   * 同类缺陷。这里每 30 分钟调用一次 runIfDue，当天已跑过会直接返回。
+   */
+  function startInterval() {
+    if (intervalTimer !== null) return
+    const ms = deps.intervalMs ?? autoCheckinIntervalMs()
+    if (ms <= 0) return
+    intervalTimer = setInterval(() => { void runIfDue() }, ms)
+    intervalTimer.unref?.()
+  }
+
   function runIfDue() {
     if (inflight !== null) return inflight
     // 每次判定前重读文档：上游频道面板的开关/手动签到的结果也会写这份文件，
@@ -636,9 +677,10 @@ export function createAutoCheckin(deps) {
       }
       if (ms <= 0) {
         fire()
-        return
+      } else {
+        pending = (deps.schedule ?? defaultSchedule)(fire, ms)
       }
-      pending = (deps.schedule ?? defaultSchedule)(fire, ms)
+      startInterval()
     },
     runIfDue,
     async dismiss() {
@@ -653,6 +695,10 @@ export function createAutoCheckin(deps) {
     stop() {
       pending?.cancel()
       pending = null
+      if (intervalTimer !== null) {
+        clearInterval(intervalTimer)
+        intervalTimer = null
+      }
     },
   }
 }

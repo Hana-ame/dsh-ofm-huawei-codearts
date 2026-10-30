@@ -23321,6 +23321,8 @@ var AUTO_CHECKIN_FILE = "auto-checkin.json";
 var AUTO_CHECKIN_SCHEMA = "dsh-codearts-auth/auto-checkin/v1";
 var AUTO_CHECKIN_DELAY_ENV = "DSH_CHANNEL_PACK_AUTO_CHECKIN_DELAY_MS";
 var DEFAULT_AUTO_CHECKIN_DELAY_MS = 3e4;
+var AUTO_CHECKIN_INTERVAL_ENV = "DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS";
+var DEFAULT_AUTO_CHECKIN_INTERVAL_MS = 30 * 60 * 1e3;
 var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 var MAX_CHANNEL_ENTRIES = 24;
 function utc8DateString(nowMs = Date.now()) {
@@ -23331,6 +23333,12 @@ function autoCheckinDelayMs(env = process.env) {
   if (typeof raw !== "string" || raw.trim().length === 0) return DEFAULT_AUTO_CHECKIN_DELAY_MS;
   const parsed = Number(raw.trim());
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_AUTO_CHECKIN_DELAY_MS;
+}
+function autoCheckinIntervalMs(env = process.env) {
+  const raw = env[AUTO_CHECKIN_INTERVAL_ENV];
+  if (typeof raw !== "string" || raw.trim().length === 0) return DEFAULT_AUTO_CHECKIN_INTERVAL_MS;
+  const parsed = Number(raw.trim());
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_AUTO_CHECKIN_INTERVAL_MS;
 }
 function sanitizeChannels(raw) {
   if (!Array.isArray(raw)) return [];
@@ -23500,7 +23508,15 @@ async function signedSnapRequest(deps, method, url, credential, body) {
     }
     return unwrapSnapEnvelope(parsed);
   } catch (error) {
-    return { ok: false, code: -1, message: error instanceof Error ? error.message : String(error) };
+    const details = [];
+    let current = error;
+    for (let depth = 0; depth < 4 && current; depth += 1) {
+      if (depth === 0 && typeof current.message === "string" && current.message.length > 0) details.push(current.message);
+      if (typeof current.code === "string" && current.code.length > 0) details.push(current.code);
+      current = current.cause;
+    }
+    const message2 = details.length > 0 ? details.join(" | ") : String(error);
+    return { ok: false, code: -1, message: message2 };
   }
 }
 async function fetchCodeArtsAccountInfo(credential, deps) {
@@ -23777,6 +23793,16 @@ function createAutoCheckin(deps) {
     }
     deps.warn?.(`[auto-checkin] \u81EA\u52A8\u7B7E\u5230\u5B8C\u6210\uFF08${today()}\uFF09\uFF1A${doc.lastResult}`);
   }
+  let intervalTimer = null;
+  function startInterval() {
+    if (intervalTimer !== null) return;
+    const ms = deps.intervalMs ?? autoCheckinIntervalMs();
+    if (ms <= 0) return;
+    intervalTimer = setInterval(() => {
+      void runIfDue();
+    }, ms);
+    intervalTimer.unref?.();
+  }
   function runIfDue() {
     if (inflight !== null) return inflight;
     doc = deps.store.load();
@@ -23809,9 +23835,10 @@ function createAutoCheckin(deps) {
       };
       if (ms <= 0) {
         fire();
-        return;
+      } else {
+        pending = (deps.schedule ?? defaultSchedule)(fire, ms);
       }
-      pending = (deps.schedule ?? defaultSchedule)(fire, ms);
+      startInterval();
     },
     runIfDue,
     async dismiss() {
@@ -23826,6 +23853,10 @@ function createAutoCheckin(deps) {
     stop() {
       pending?.cancel();
       pending = null;
+      if (intervalTimer !== null) {
+        clearInterval(intervalTimer);
+        intervalTimer = null;
+      }
     }
   };
 }

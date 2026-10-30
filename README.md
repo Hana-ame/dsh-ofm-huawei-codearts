@@ -106,6 +106,8 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
   `0` 合法），若开关打开且**今天（UTC+8）还没跑过**，就串行遍历
   `channel-pack/state.json` 里启用的 CodeArts 账号，逐个执行
   「查询账号信息 → 查询活动列表 → 领取每日登录积分 → 确认」；
+- 进程常驻时每 30 分钟复查一次（`DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS`
+  覆盖，`0` 关闭）：跨天后自动补签，不必重启 DSH；当天已签会直接跳过；
 - 结果写回 `$DSH_HOME/channel-pack/auto-checkin.json`（schema
   `dsh-codearts-auth/auto-checkin/v1`，与上游既有文档完全兼容），当天不再触发；
 - 状态文件与上游频道面板共用：`our-free-model` 的「每日自动签到」开关/状态

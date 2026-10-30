@@ -234,3 +234,37 @@ test('runIfDue reloads the switch written by the upstream panel', async () => {
   assert.equal(claimCalls, 0)
   fs.rmSync(home, { recursive: true, force: true })
 })
+
+test('autoCheckinIntervalMs parses env with defaults', async () => {
+  const { autoCheckinIntervalMs, DEFAULT_AUTO_CHECKIN_INTERVAL_MS } = await import('../src/auto-checkin.js')
+  assert.equal(autoCheckinIntervalMs({}), DEFAULT_AUTO_CHECKIN_INTERVAL_MS)
+  assert.equal(autoCheckinIntervalMs({ DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS: '60000' }), 60000)
+  assert.equal(autoCheckinIntervalMs({ DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS: '0' }), 0)
+  assert.equal(autoCheckinIntervalMs({ DSH_CHANNEL_PACK_AUTO_CHECKIN_INTERVAL_MS: 'bad' }), DEFAULT_AUTO_CHECKIN_INTERVAL_MS)
+})
+
+test('start() re-checks periodically but claims only once per day', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codearts-checkin-'))
+  const store = createFileAutoCheckinStore({ home })
+  let claims = 0
+  const checkin = createAutoCheckin({
+    store,
+    delayMs: 0,
+    intervalMs: 10,
+    now: () => Date.parse('2026-10-29T10:00:00+08:00'),
+    listAccounts: async () => [{ id: 'a1', nickname: '', credentialRef: 'CODEARTS_ACCOUNT_AAA111' }],
+    resolveCredential: async () => ({ access_key_id: 'ak', secret_access_key: 'sk' }),
+    claim: async () => {
+      claims += 1
+      return { kind: 'claimed', credit: 100 }
+    },
+    warn: () => {},
+  })
+  checkin.start()
+  await new Promise(resolve => setTimeout(resolve, 80))
+  checkin.stop()
+  // 首次立即跑一次；后续周期复查因「今天已跑过」不再领取。
+  assert.equal(claims, 1)
+  assert.equal(store.load().lastDate, '2026-10-29')
+  fs.rmSync(home, { recursive: true, force: true })
+})
