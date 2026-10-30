@@ -79,6 +79,18 @@ ESBUILD_BIN=/path/to/esbuild ./scripts/build.sh
 `Dynamic require of "node:assert" is not supported`，DSH 只显示 `failed to import`。
 上游 channel-pack 的构建脚本（`scripts/build-channel-pack.mjs:67`）用的是同一个办法。
 
+### ⚠️ undici 版本（务必 8.x）
+
+插件代码依赖 `undici` 的 `Dispatcher1Wrapper` 兼容桥（8.x 才有）。构建脚本会
+校验 `DEPS_DIR` 里 undici 的主版本，低于 8 直接失败：
+
+- 推荐构建依赖放在 `$HOME/.dsh/build-deps/node_modules`（undici 8.x + jose），
+  `scripts/build.sh` 会优先用它；
+- **症状**：用 6.x/7.x 构建也能成功，但运行时只要走环境代理就抛
+  `Dispatcher1Wrapper is not a constructor`，直连却一切正常——2026-10-30
+  的实际故障就是打包时误用了 undici 6.28.0，导致 CodeArts 模型/签到/余额
+  全部报「渠道网络请求失败（环境代理）」。
+
 ## 安装/启用
 
 1. 插件目录放到 `~/.dsh/plugins/dsh-ofm-huawei-codearts`；
