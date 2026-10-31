@@ -30595,6 +30595,24 @@ function registerAdapterIdempotent(llm, providers, adapter, warn) {
   }
 }
 
+// src/session-headers.js
+import { createHash as createHash3 } from "node:crypto";
+function codeartsSessionHeaderId(sessionId, fallback2) {
+  if (typeof sessionId !== "string" || sessionId.length === 0) return fallback2;
+  return createHash3("sha256").update(sessionId).digest("hex").slice(0, 32);
+}
+function codeartsSessionHeaders(sessionHeaderId) {
+  return {
+    "user-session-id": sessionHeaderId,
+    "x-ot-session-id": sessionHeaderId,
+    // IDE 用 parent-session-id 表示子 agent 归属；单层 DSH 会话留空。
+    "x-ot-parent-session-id": "",
+    // 旧方言头保留：部分网关版本仍以 Chat-Id/Session-Id 做亲和。
+    "Chat-Id": sessionHeaderId,
+    "Session-Id": sessionHeaderId
+  };
+}
+
 // src/llm-adapter.ts
 var CHAT_API_BASE = "https://snap-access.cn-north-4.myhuaweicloud.com/api/v2";
 var PROVIDER = "codearts";
@@ -31124,13 +31142,14 @@ var CodeArtsAdapter = class extends LlmAdapter {
       messages.splice(messages.findIndex((m) => m.role === "system") + 1, 0, { role: "system", content: buildDsmlSystemPrompt(wireTools) });
       wireTools = void 0;
     }
+    const sessionHeaderId = codeartsSessionHeaderId(options.sessionId, this.sessionId);
     const body = JSON.stringify({
       model: options.model,
       messages,
       stream: true,
       // prompt_cache_key 让服务端启用前缀缓存并在 usage 中返回 cached_tokens，
       // 缺少该字段时缓存命中恒为 0（实测 2026-08-24）。
-      prompt_cache_key: this.sessionId,
+      prompt_cache_key: sessionHeaderId,
       // include/reasoning_summary 对齐 Rust 端 CodeArtsExtraFields，
       // 让服务端返回加密 reasoning 内容与摘要。
       include: ["reasoning.encrypted_content"],
@@ -31180,8 +31199,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
         if (key !== "content-type") headers.set(key, value);
       });
       headers.set("Content-Type", "application/json");
-      headers.set("Chat-Id", this.chatId);
-      headers.set("Session-Id", this.sessionId);
+      for (const [key, value] of Object.entries(codeartsSessionHeaders(sessionHeaderId))) headers.set(key, value);
       headers.set("lang", "en");
       response = await this.fetchImpl(url, {
         method: "POST",
@@ -31290,7 +31308,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
           }
         }
         if (!isQueueError(response.status, errorText)) {
-          const probe = await this.queryQueueStatus(credential, options.model, options.signal);
+          const probe = await this.queryQueueStatus(credential, options.model, sessionHeaderId, options.signal);
           if (probe === void 0 || probe.status === "working") {
             const code = httpErrorCode(response.status, errorText);
             throw new LlmError2(`codearts: model request failed with HTTP ${response.status}`, code, { status: response.status });
@@ -31302,7 +31320,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
         throw new LlmError2("codearts: queue wait timed out after 30 minutes", "QUEUE");
       }
       if (options.signal?.aborted) throw new LlmError2("codearts: request aborted while waiting in queue", "QUEUE");
-      const status = await this.queryQueueStatus(credential, options.model, options.signal);
+      const status = await this.queryQueueStatus(credential, options.model, sessionHeaderId, options.signal);
       if (status?.status === "error" || status?.status === "queue_full") {
         throw new LlmError2(`codearts: ${status.message || `queue status: ${status.status}`}`, "QUEUE");
       }
@@ -31634,8 +31652,8 @@ var CodeArtsAdapter = class extends LlmAdapter {
    * @returns 解析后的排队状态，或当端点不可达
    *   或返回无法识别的载荷时返回 `undefined`。
    */
-  async queryQueueStatus(credential, model, signal) {
-    const url = `${QUEUE_STATUS_BASE}?model=${encodeURIComponent(model)}&task_id=${encodeURIComponent(this.sessionId)}`;
+  async queryQueueStatus(credential, model, sessionHeaderId, signal) {
+    const url = `${QUEUE_STATUS_BASE}?model=${encodeURIComponent(model)}&task_id=${encodeURIComponent(sessionHeaderId)}`;
     const signed = await signRequestHuawei(
       credential.access_key_id,
       credential.secret_access_key,
@@ -31649,6 +31667,8 @@ var CodeArtsAdapter = class extends LlmAdapter {
       if (key !== "content-type") headers.set(key, value);
     });
     headers.set("x-snap-traceid", crypto.randomUUID());
+    headers.set("user-session-id", sessionHeaderId);
+    headers.set("x-ot-session-id", sessionHeaderId);
     headers.set("Agent-Type", "INFERHUB_AGENT");
     headers.set("X-Language", "en");
     let response;

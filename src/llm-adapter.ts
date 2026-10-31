@@ -19,6 +19,7 @@ import type { CodeArtsCredential } from './types.js'
 import {
   registerAdapterIdempotent,
 } from './llm-register-compat.js'
+import { codeartsSessionHeaderId, codeartsSessionHeaders } from './session-headers.js'
 import { reportLedgerAccount } from './token-ledger.js'
 
 export const CHAT_API_BASE = 'https://snap-access.cn-north-4.myhuaweicloud.com/api/v2'
@@ -1073,13 +1074,14 @@ export class CodeArtsAdapter extends LlmAdapter {
       messages.splice(messages.findIndex(m => m.role === 'system') + 1, 0, { role: 'system', content: buildDsmlSystemPrompt(wireTools) })
       wireTools = undefined
     }
+    const sessionHeaderId = codeartsSessionHeaderId(options.sessionId, this.sessionId)
     const body = JSON.stringify({
       model: options.model,
       messages,
       stream: true,
       // prompt_cache_key 让服务端启用前缀缓存并在 usage 中返回 cached_tokens，
       // 缺少该字段时缓存命中恒为 0（实测 2026-08-24）。
-      prompt_cache_key: this.sessionId,
+      prompt_cache_key: sessionHeaderId,
       // include/reasoning_summary 对齐 Rust 端 CodeArtsExtraFields，
       // 让服务端返回加密 reasoning 内容与摘要。
       include: ['reasoning.encrypted_content'],
@@ -1153,8 +1155,7 @@ export class CodeArtsAdapter extends LlmAdapter {
       // canonical 计算、包含在 SignedHeaders 列表中，缺失会导致服务端验签失败。
       signed.forEach((value, key) => { if (key !== 'content-type') headers.set(key, value) })
       headers.set('Content-Type', 'application/json')
-      headers.set('Chat-Id', this.chatId)
-      headers.set('Session-Id', this.sessionId)
+      for (const [key, value] of Object.entries(codeartsSessionHeaders(sessionHeaderId))) headers.set(key, value)
       headers.set('lang', 'en')
 
       response = await this.fetchImpl(url, {
@@ -1314,7 +1315,7 @@ export class CodeArtsAdapter extends LlmAdapter {
           // 排队状态端点——只有端点确认会话在排队（waiting/queue_full）时
           // 才进入排队流程；端点不可达或未排队（working）则按原错误分类
           // 立即抛出，避免把真错误（如 401/400）拖成 30 分钟超时。
-          const probe = await this.queryQueueStatus(credential, options.model, options.signal)
+          const probe = await this.queryQueueStatus(credential, options.model, sessionHeaderId, options.signal)
           if (probe === undefined || probe.status === 'working') {
             // 与 deepseek 适配器的 httpErrorCode 词汇保持一致；
             // 400 + 上下文超限措辞归为 CONTEXT_WINDOW_EXCEEDED（触发 compaction）。
@@ -1339,7 +1340,7 @@ export class CodeArtsAdapter extends LlmAdapter {
         throw new LlmError('codearts: queue wait timed out after 30 minutes', 'QUEUE')
       }
       if (options.signal?.aborted) throw new LlmError('codearts: request aborted while waiting in queue', 'QUEUE')
-      const status = await this.queryQueueStatus(credential, options.model, options.signal)
+      const status = await this.queryQueueStatus(credential, options.model, sessionHeaderId, options.signal)
       if (status?.status === 'error' || status?.status === 'queue_full') {
         throw new LlmError(`codearts: ${status.message || `queue status: ${status.status}`}`, 'QUEUE')
       }
@@ -2000,9 +2001,10 @@ export class CodeArtsAdapter extends LlmAdapter {
   private async queryQueueStatus(
     credential: CodeArtsCredential,
     model: string,
+    sessionHeaderId: string,
     signal?: AbortSignal,
   ): Promise<CodeArtsQueueStatus | undefined> {
-    const url = `${QUEUE_STATUS_BASE}?model=${encodeURIComponent(model)}&task_id=${encodeURIComponent(this.sessionId)}`
+    const url = `${QUEUE_STATUS_BASE}?model=${encodeURIComponent(model)}&task_id=${encodeURIComponent(sessionHeaderId)}`
     const signed = await signRequestHuawei(
       credential.access_key_id,
       credential.secret_access_key,
@@ -2014,6 +2016,8 @@ export class CodeArtsAdapter extends LlmAdapter {
     const headers = new Headers()
     signed.forEach((value, key) => { if (key !== 'content-type') headers.set(key, value) })
     headers.set('x-snap-traceid', crypto.randomUUID())
+    headers.set('user-session-id', sessionHeaderId)
+    headers.set('x-ot-session-id', sessionHeaderId)
     headers.set('Agent-Type', 'INFERHUB_AGENT')
     headers.set('X-Language', 'en')
     let response: Response

@@ -174,6 +174,20 @@ CodeArts 的 STS 临时令牌约 1–2 小时寿命、**refresh_token 一次性*
 }
 ```
 
+## 并发与会话头（2026-10-31 修复）
+
+CodeArts 后端按**会话**统计并发，超限时报 `TM.00001041`「并发会话数已达上限」。
+CodeArts Agent IDE 内核（vscode-codebot 26.10.2）在 `/chat/completions` 上发送
+`user-session-id` / `x-ot-session-id` / `x-ot-parent-session-id` 等会话头；
+旧适配器只发 `Chat-Id`/`Session-Id` 且所有请求共用同一个随机 id，反代场景下
+后端会话计数与请求对不上，几次并发就撞上限。
+
+现在适配器把 DSH 的 `GenerateOptions.sessionId` 哈希成 32 位 hex 作为会话头
+（`src/session-headers.js`）：同一 DSH 会话的请求归并到一个 CodeArts 会话，
+不同会话互不挤占；队列轮询的 `task_id` 也用同一 id。无会话上下文（一次性
+调用）时回落到适配器实例的随机 id。并发上限本身仍由后端决定（IDE 侧建议
+最多 2 个并发对话）。
+
 ## 已知边界
 
 - 不显示 OFM 的“白嫖模型接入”页里的华为卡片（见上）；
