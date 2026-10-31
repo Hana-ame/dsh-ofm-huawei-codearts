@@ -10,6 +10,30 @@
 - 保留华为的签名传输（`SDK-HMAC-SHA256`、benefit 额度重试）；
 - 设置页可**逐模型配置图片能力**（`inputModalities`），图片按 data URL 下发。
 
+## 即插即用（clone → 装）
+
+```bash
+git clone git@github.com:Hana-ame/dsh-ofm-huawei-codearts.git
+cd dsh-ofm-huawei-codearts
+./scripts/install.sh          # 默认装进 web profile；别的 profile 名当参数传
+```
+
+脚本幂等地做三件事，**不需要联网、不需要构建**（`index.js` 是仓库自带的预构建产物）：
+
+1. 在 `$DSH_HOME/profiles/<profile>/node_modules/` 建软链指向本仓库；
+2. 在 profile 的 `package.json` 里登记 `"dsh-ofm-huawei-codearts": "link:<仓库路径>"`；
+3. 把包名加进 `dsh.profile.bundles`（DSH 只加载 bundles 里列出的包）。
+
+改 profile 前自动备份成 `package.json.bak-install-<时间戳>`；`--dry-run` 只看不动，
+`DSH_HOME` 环境变量可覆盖默认的 `~/.dsh`。
+
+装完**重启 DSH**（`dsh web`），模型选择器里就会多出 provider **CodeArts Agent**。
+首次使用要授权：设置 → 华为云 CodeArts → 「重新登录 CodeArts」；本机若跑过
+`dsh-our-free-model`，凭据会被直接复用，可跳过这步。
+
+依赖：DSH 0.2.x + Node 22。peerDependencies 只挂 `@deepseek-ai/*` 核心包，
+**不依赖 dsh-our-free-model**（它只是历史数据来源）。
+
 ## 它和 dsh-our-free-model 怎么分工
 
 ```
@@ -39,6 +63,11 @@ DSH 内核
 它下次保存 `state.json` 时可能把这条账号过滤掉。本插件按 ref 直读凭据，账号索引
 被重写也不影响。
 
+**全新机器**（从没跑过 `dsh-our-free-model`）不需要上面这份遗留数据：设置页的
+「重新登录 CodeArts」会把凭据写进 `$DSH_HOME/.credentials.yaml` 的历史 ref
+`CODEARTS_ACCESS_TOKEN`；当账号索引与 `CODEARTS_ACCOUNT_*` 都找不到时，本插件
+（LLM 路径与每日签到两条路）会自动回退到它。
+
 ## 目录结构
 
 ```
@@ -50,7 +79,8 @@ dsh-ofm-huawei-codearts/
 │  └─ en.json            英文标题/描述
 ├─ index.js              构建产物（DSH 真正加载的文件）
 ├─ scripts/
-│  └─ build.sh           用 esbuild 重新构建 index.js
+│  ├─ build.sh           用 esbuild 重新构建 index.js
+│  └─ install.sh         把本插件装进 DSH profile（clone 即插即用）
 ├─ src/
 │  ├─ index.ts           插件入口：apply()、凭据解析
 │  ├─ llm-adapter.ts     CodeArts 适配器（请求/流式/错误分类）

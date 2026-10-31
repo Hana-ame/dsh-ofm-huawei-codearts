@@ -85,16 +85,36 @@ export function normalizeModelId(id: string): string {
   return id
 }
 
-function parseModelInfo(m: Record<string, unknown>, seen: Set<string>): RemoteModel | undefined {
+/**
+ * 解析一条目录条目。
+ *
+ * `normalizeVersionSuffix` **只对 `gateway/config` 打开**（见调用处）：那边的
+ * `deepseek-v4-flash-0731` 与无后缀 id 在后端是同一模型的两种形态，chat 端点
+ * 只认无后缀 id。而 `/v1/model/builtin` 的 `deepseek-v4.1-flash-1017` 是
+ * **另一个独立注册、独立计费的模型**（官方积分系数表把它与 deepseek-v4.1-flash
+ * 并列且系数不同，目录 credit 段也单列），一律剥后缀会把它并进
+ * `deepseek-v4.1-flash` 再被去重丢掉 —— 2026-10-31 实测，这就是「列表里没有 1017」。
+ */
+function parseModelInfo(
+  m: Record<string, unknown>,
+  seen: Set<string>,
+  normalizeVersionSuffix = true,
+): RemoteModel | undefined {
   const rawId = m['model_id']
   if (typeof rawId !== 'string' || rawId.length === 0) return undefined
-  const id = normalizeModelId(rawId)
-  // 过滤视觉（VL）多模态模型
+  // 目录显式下发 display_enabled=false 的条目（图片理解：Qwen3-VL-235B、
+  // kimi-k2.6-vl）不给主模型用；有这个字段时以它为准，比按名字猜 VL 可靠。
+  if (m['display_enabled'] === false) return undefined
+  const id = normalizeVersionSuffix ? normalizeModelId(rawId) : rawId
+  // 过滤视觉（VL）多模态模型（**大小写不敏感**：kimi-k2.6-vl 是小写形态，
+  // 早期 `endsWith('-VL')` 区分大小写，把它放进了模型列表）。
   // id 含 -VL- 或以 -VL 结尾（如 Qwen3-VL-235B），上下文小、不支持工具调用，
   // 不适合当 agent 主模型，从列表隐藏；只通过 analyzeImage 等工具间接调用。
-  if (id.includes('-VL-') || id.endsWith('-VL')) return undefined
+  if (/-VL-/i.test(id) || /-VL$/i.test(id)) return undefined
   const rawName = m['model_name']
-  const name = typeof rawName === 'string' && rawName.length > 0 ? normalizeModelId(rawName) : id
+  const name = typeof rawName === 'string' && rawName.length > 0
+    ? (normalizeVersionSuffix ? normalizeModelId(rawName) : rawName)
+    : id
   if (seen.has(id)) return undefined
   seen.add(id)
   return { id, name }
@@ -210,7 +230,9 @@ export async function fetchCodeArtsRemoteModels(
     if (arr !== undefined) {
       for (const item of arr) {
         if (typeof item === 'object' && item !== null) {
-          const mi = parseModelInfo(item as Record<string, unknown>, seen)
+          // ⚠️ false：builtin 的 id 原样保留，不剥末尾 -NNNN 版本后缀
+          // （`deepseek-v4.1-flash-1017` 是独立模型，剥了会被去重丢掉）。
+          const mi = parseModelInfo(item as Record<string, unknown>, seen, false)
           if (mi) models.push(mi)
         }
       }

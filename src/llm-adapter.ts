@@ -65,30 +65,70 @@ const CODEARTS_BENEFIT_NOT_FOUND_ERROR_CODE = 'InferHub.4004.200'
 //     `unsupported model`）
 // gateway/config 返回的是 benefit 那组，故下方静态表保留无后缀形态
 // （无后缀始终可用，不依赖 benefit 头），而 deepseek-v4.1-flash 只有 benefit 形态。
+//
+// 2026-10-31 实测剔除两个**已下线**的静态模型（本通道直接 404，留着只会让选择器
+// 里多两个必然报错的条目）：
+//   - `GLM-5`           → `InferHub.002002009.404 The model is not registered`
+//   - `deepseek-v4-pro` → `InferHub.ModelArts.81009.404 Invalid model`
 const DEFAULT_MODELS: readonly string[] = [
-  'GLM-5.2', 'GLM-5.1', 'GLM-5',
+  'GLM-5.2', 'GLM-5.1',
   'glm-5.3-flash',
   'openpangu-2.0-flash', 'openpangu-2.0-pro',
-  'deepseek-v4-flash', 'deepseek-v4-pro',
+  'deepseek-v4-flash',
   'deepseek-v4.1-flash',
 ]
 
 /**
  * 模型上下文窗口（最大合并请求+响应 token 数）。
- * - GLM-5.2：202752（对齐 CodeArts Agent IDE 模型卡标注）。
- * - glm-5.3-flash：1048576（1M，逆向自 IDE gateway/config，对齐 deveco-code-rust 90aeb17d）。
- * - deepseek-v4-flash / deepseek-v4-pro：1048576（1M，UI 标注）。
- * - deepseek-v4.1-flash：1000000（对齐 IDE 下发的 inferhub-provider 模型配置，
- *   2026-09 kernel 日志；对齐 deveco-code-rust fb1b4a2）。
- * - 其余模型未公开上下文容量，留 undefined 让后端默认裁剪。
+ *
+ * 两套来源，冲突时以本表既有值为准：
+ * - **CodeArts 渠道实测 / IDE 卡片**：glm-5.3-flash=1048576（IDE gateway/config）、
+ *   deepseek-v4-flash / -pro=1048576（UI 标注）、deepseek-v4.1-flash=1000000
+ *   （IDE inferhub-provider 配置，2026-09 kernel 日志）。
+ * - **华为云 MaaS「模型列表」**（support.huaweicloud.com/model-list-maas/model_list_0001.html，
+ *   2026-10-31 直读，同一批模型的后端部署）：openpangu-2.0-flash/-pro=512K、
+ *   glm-5.3=1M、glm-5.1=198K、glm-5.2-arkts-spark（= 目录里的 glm-5.2-sft-harmony）=198K、
+ *   deepseek-v4.1-flash-1017=1M。
+ *   ⚠️ GLM-5.2：MaaS 页记 1M、旧 IDE 模型卡记 202752，**2026-10-31 用户裁定取 MaaS 的 1M**
+ *   （旧值已推翻；若 CodeArts 渠道实际按 202K 裁剪，表现为超长请求被后端拒，改回 202752 即可）。
+ * - kimi-k3 / kimi-k3.1-pro：官方页未列，取第三方对比页的 1048576（**待实测校正**）。
+ * - GLM-5 无上下文来源（且 2026-10-31 实测已下线，见 DEFAULT_MODELS 注释）；
+ *   `deepseek-v4-pro` 同样已下线 —— 本表保留它们的窗口，只为后端重新上线时备用。
  */
 const CONTEXT_WINDOWS: ReadonlyMap<string, number> = new Map([
-  ['GLM-5.2', 202752],
+  ['GLM-5.2', 1_048_576],
+  ['GLM-5.1', 202752],
+  ['glm-5.3', 1_048_576],
   ['glm-5.3-flash', 1_048_576],
+  ['glm-5.2-sft-harmony', 202752],
+  ['openpangu-2.0-flash', 524288],
+  ['openpangu-2.0-pro', 524288],
   ['deepseek-v4-flash', 1048576],
   ['deepseek-v4-pro', 1048576],
   ['deepseek-v4.1-flash', 1_000_000],
+  ['deepseek-v4.1-flash-1017', 1_000_000],
+  ['kimi-k3', 1_048_576],
+  ['kimi-k3.1-pro', 1_048_576],
 ])
+
+/**
+ * 本通道（snap-access）的 `max_tokens` 上限：**131072（128K）**。
+ *
+ * 2026-10-31 逐档实测（每档一个最小请求；判据＝HTTP 200 且流内无 error 事件）：
+ * - **131072 接受**：目录里 10 个模型 + 静态兜底里的 GLM-5.1 / deepseek-v4-flash，
+ *   逐个 200 正常出流。
+ * - **131073 拒绝** → 上限就是 131072，不是"约 128K"。
+ * - 147456 / 163840 / 172032 / 180224 / 196608 / 262144 / 393216 全拒，报文为
+ *   HTTP 200 + SSE `InferHub.001001005.400 The request param is invalid, Please check it`
+ *   ——正是把设置页「输出上限」按 MaaS 表设成 384K 后**每个请求**报的那个错。
+ * - 顺带实测到两个已下线的静态模型：`GLM-5` → `InferHub.002002009.404 The model is
+ *   not registered`；`deepseek-v4-pro` → `InferHub.ModelArts.81009.404 Invalid model`。
+ *
+ * ⚠️ 华为云 MaaS「模型列表」给的 384K / 128K 是 **MaaS 端点**的能力，别直接搬到这里。
+ * ⚠️ 该值经 `maxOutput → resolveModel 的 defaultMaxTokens → DSH 的 config.maxTokens`
+ * 逐字变成请求参数 `max_tokens`（不是展示字段）；要再往上抬必须先做受控实测。
+ */
+const DEFAULT_MAX_OUTPUT_TOKENS = 131072
 
 export interface CodeArtsAdapterOptions {
   credentialRef: CredentialRef
@@ -1041,7 +1081,19 @@ export class CodeArtsAdapter extends LlmAdapter {
    * 需要正确的 `name`（否则关闭项显示 `deepseek-v4-flash` 这类裸 id）。
    */
   listAllModels(): readonly { id: string; name: string }[] {
-    const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }))
+    // 远端目录 ∪ 静态兜底。云端 builtin 列表比本地兜底**少**几条
+    // （GLM-5.1 / deepseek-v4-flash 现在不在 /v1/model/builtin 里，但实测仍可用），
+    // 若严格「远端覆盖兜底」，这几条会从模型选择器凭空消失。
+    // 同名时以远端的 name 为准。
+    const remote = this.remoteModels
+    const source = remote === undefined
+      ? DEFAULT_MODELS.map((id) => ({ id, name: id }))
+      : [
+        ...remote,
+        ...DEFAULT_MODELS
+          .filter((id) => !remote.some((m) => m.id === id))
+          .map((id) => ({ id, name: id })),
+      ]
     // 与 listModels 保持同一套「可见性」过滤（VL 多模态不参与），
     // 唯一区别是不套用户黑名单。
     return source
@@ -1103,13 +1155,13 @@ export class CodeArtsAdapter extends LlmAdapter {
     return this.catalogFrom(source)
   }
 
-  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口，形成目录行。 */
+  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口与已验证的输出上限，形成目录行。 */
   private catalogFrom(rows: readonly { id: string; name: string }[]): CatalogModel[] {
     return rows.map((row) => {
       const contextWindow = CONTEXT_WINDOWS.get(row.id)
       return contextWindow === undefined
-        ? { id: row.id, name: row.name }
-        : { id: row.id, name: row.name, contextWindow }
+        ? { id: row.id, name: row.name, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS }
+        : { id: row.id, name: row.name, contextWindow, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS }
     })
   }
 
@@ -1256,13 +1308,16 @@ export class CodeArtsAdapter extends LlmAdapter {
       // （error decoding response body）。deepseek-v4 的 DSML 路径不受此
       // 影响，保留该字段与 IDE 对齐。
       tool_stream: true,
-      // 输出上限（对齐 deveco-code-rust 参考实现 codearts.rs 的 max_tokens 配置）：
+      // 输出上限：
       // 大文件 write 工具参数（如 1000-2000+ 行文档）需要数万 token 的生成空间，
       // 若沿用后端默认输出上限，参数 JSON 会在中途被截断成非法 JSON，harness
       // 工具校验报 `invalid arguments: "arguments" must be an object`。
-      // 参考实现 e2e 实测：65536 可用，131072 反而触发空流被后端拒绝；
-      // 显式传入的 options.maxTokens 优先，未设置时默认 65536。
-      max_tokens: options.maxTokens ?? 65536,
+      // 取值优先用调用方下发的 options.maxTokens（模型设置页「输出上限」→
+      // resolveModel 的 defaultMaxTokens → DSH 的 config.maxTokens），未设置时兜底 65536。
+      // ⚠️ 2026-10-31 实测：本通道 `max_tokens` 上限 = **131072（128K）**，131073 即被拒
+// （`InferHub.001001005.400 The request param is invalid`）。别照搬 MaaS 端点的 384K
+// （详见上方 DEFAULT_MAX_OUTPUT_TOKENS 的实测记录）。
+      max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       ...wireTools !== undefined && wireTools.length > 0 ? { tools: wireTools } : {},
     })
     const url = `${CHAT_API_BASE}/chat/completions`

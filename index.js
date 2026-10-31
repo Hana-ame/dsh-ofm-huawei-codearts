@@ -29105,13 +29105,14 @@ function normalizeModelId(id) {
   }
   return id;
 }
-function parseModelInfo(m, seen) {
+function parseModelInfo(m, seen, normalizeVersionSuffix = true) {
   const rawId = m["model_id"];
   if (typeof rawId !== "string" || rawId.length === 0) return void 0;
-  const id = normalizeModelId(rawId);
-  if (id.includes("-VL-") || id.endsWith("-VL")) return void 0;
+  if (m["display_enabled"] === false) return void 0;
+  const id = normalizeVersionSuffix ? normalizeModelId(rawId) : rawId;
+  if (/-VL-/i.test(id) || /-VL$/i.test(id)) return void 0;
   const rawName = m["model_name"];
-  const name2 = typeof rawName === "string" && rawName.length > 0 ? normalizeModelId(rawName) : id;
+  const name2 = typeof rawName === "string" && rawName.length > 0 ? normalizeVersionSuffix ? normalizeModelId(rawName) : rawName : id;
   if (seen.has(id)) return void 0;
   seen.add(id);
   return { id, name: name2 };
@@ -29182,7 +29183,7 @@ async function fetchCodeArtsRemoteModels(credential, fetcher = directFetch) {
     if (arr !== void 0) {
       for (const item of arr) {
         if (typeof item === "object" && item !== null) {
-          const mi = parseModelInfo(item, seen);
+          const mi = parseModelInfo(item, seen, false);
           if (mi) models.push(mi);
         }
       }
@@ -30847,21 +30848,28 @@ var CODEARTS_BENEFIT_NOT_FOUND_ERROR_CODE = "InferHub.4004.200";
 var DEFAULT_MODELS = [
   "GLM-5.2",
   "GLM-5.1",
-  "GLM-5",
   "glm-5.3-flash",
   "openpangu-2.0-flash",
   "openpangu-2.0-pro",
   "deepseek-v4-flash",
-  "deepseek-v4-pro",
   "deepseek-v4.1-flash"
 ];
 var CONTEXT_WINDOWS = /* @__PURE__ */ new Map([
-  ["GLM-5.2", 202752],
+  ["GLM-5.2", 1048576],
+  ["GLM-5.1", 202752],
+  ["glm-5.3", 1048576],
   ["glm-5.3-flash", 1048576],
+  ["glm-5.2-sft-harmony", 202752],
+  ["openpangu-2.0-flash", 524288],
+  ["openpangu-2.0-pro", 524288],
   ["deepseek-v4-flash", 1048576],
   ["deepseek-v4-pro", 1048576],
-  ["deepseek-v4.1-flash", 1e6]
+  ["deepseek-v4.1-flash", 1e6],
+  ["deepseek-v4.1-flash-1017", 1e6],
+  ["kimi-k3", 1048576],
+  ["kimi-k3.1-pro", 1048576]
 ]);
+var DEFAULT_MAX_OUTPUT_TOKENS = 131072;
 function contentToText(content) {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
@@ -31273,8 +31281,10 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const id = typeof provider === "string" && provider.length > 0 ? provider : PROVIDER;
     return { id, name: "CodeArts Agent" };
   }
-  /** 动态模型缓存（首次 listModels 成功后填充）。 */
+  /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
   remoteModels;
+  /** 最近一次**成功**取到远端目录的时刻（ms）：过了刷新窗口才允许再拉。 */
+  remoteModelsAt = 0;
   /**
    * 目录加载闸门：并发去重 + 失败冷却。
    *
@@ -31287,16 +31297,39 @@ var CodeArtsAdapter = class extends LlmAdapter {
   /**
    * 懒加载远端模型目录。resolveModel 可能先于 listModels 被调用
    * （如直接进入会话），此时同样触发远端拉取。
+   *
+   * ⚠ 缓存**有保质期**（{@link MODEL_REFRESH_INTERVAL_MS}，2 小时）：云端会
+   * 新增/下架模型（2026-10-31 新增 `deepseek-v4.1-flash-1017`），原实现
+   * 「成功即永久缓存」，于是模型列表会一直停在进程首屏那一版，只能靠重启更新。
    */
   async ensureRemoteModels() {
     const fetchRemote = this.options.fetchRemoteModels;
-    if (this.remoteModels !== void 0 || fetchRemote === void 0) return;
+    if (fetchRemote === void 0) return;
+    if (this.remoteModels !== void 0 && Date.now() - this.remoteModelsAt < MODEL_REFRESH_INTERVAL_MS) return;
     await this.catalogGate.run(async () => {
       const models = await fetchRemote();
       if (models.length === 0) return false;
       this.remoteModels = models;
+      this.remoteModelsAt = Date.now();
       return true;
     });
+  }
+  /**
+   * 用外部拉到的目录覆盖内存与磁盘缓存。
+   *
+   * 调用方是 `src/index.ts` 的目录刷新调度器（进程常驻期间的定时刷新）与
+   * 设置页的按需刷新：`ensureRemoteModels()` 只在构建目录时按需拉，DSH 把
+   * provider 目录缓存住之后就不会再进这里，因此**必须有一个能从外部推**的入口，
+   * 否则「自动更新」只能等重启。
+   *
+   * 空数组不覆盖（与 `ensureRemoteModels` 的「空 = 没拿到」口径一致）。
+   */
+  setRemoteModels(models) {
+    if (models.length === 0) return;
+    this.remoteModels = models.map((m) => ({ id: m.id, name: m.name }));
+    this.remoteModelsAt = Date.now();
+    setMemoryCache(this.remoteModels);
+    saveModelsCache(this.remoteModels);
   }
   /**
    * 完整模型目录（**不应用用户黑名单**）。
@@ -31307,7 +31340,11 @@ var CodeArtsAdapter = class extends LlmAdapter {
    * 需要正确的 `name`（否则关闭项显示 `deepseek-v4-flash` 这类裸 id）。
    */
   listAllModels() {
-    const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }));
+    const remote = this.remoteModels;
+    const source = remote === void 0 ? DEFAULT_MODELS.map((id) => ({ id, name: id })) : [
+      ...remote,
+      ...DEFAULT_MODELS.filter((id) => !remote.some((m) => m.id === id)).map((id) => ({ id, name: id }))
+    ];
     return source.filter((m) => !/-VL-/i.test(m.id) && !/-VL$/i.test(m.id)).map((m) => ({ id: m.id, name: m.name }));
   }
   async listModels(_provider) {
@@ -31340,11 +31377,11 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }));
     return this.catalogFrom(source);
   }
-  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口，形成目录行。 */
+  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口与已验证的输出上限，形成目录行。 */
   catalogFrom(rows) {
     return rows.map((row) => {
       const contextWindow = CONTEXT_WINDOWS.get(row.id);
-      return contextWindow === void 0 ? { id: row.id, name: row.name } : { id: row.id, name: row.name, contextWindow };
+      return contextWindow === void 0 ? { id: row.id, name: row.name, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS } : { id: row.id, name: row.name, contextWindow, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS };
     });
   }
   /** 某个模型应用覆盖后的有效行；不在目录里时返回 undefined。 */
@@ -31454,13 +31491,16 @@ var CodeArtsAdapter = class extends LlmAdapter {
       // （error decoding response body）。deepseek-v4 的 DSML 路径不受此
       // 影响，保留该字段与 IDE 对齐。
       tool_stream: true,
-      // 输出上限（对齐 deveco-code-rust 参考实现 codearts.rs 的 max_tokens 配置）：
+      // 输出上限：
       // 大文件 write 工具参数（如 1000-2000+ 行文档）需要数万 token 的生成空间，
       // 若沿用后端默认输出上限，参数 JSON 会在中途被截断成非法 JSON，harness
       // 工具校验报 `invalid arguments: "arguments" must be an object`。
-      // 参考实现 e2e 实测：65536 可用，131072 反而触发空流被后端拒绝；
-      // 显式传入的 options.maxTokens 优先，未设置时默认 65536。
-      max_tokens: options.maxTokens ?? 65536,
+      // 取值优先用调用方下发的 options.maxTokens（模型设置页「输出上限」→
+      // resolveModel 的 defaultMaxTokens → DSH 的 config.maxTokens），未设置时兜底 65536。
+      // ⚠️ 2026-10-31 实测：本通道 `max_tokens` 上限 = **131072（128K）**，131073 即被拒
+      // （`InferHub.001001005.400 The request param is invalid`）。别照搬 MaaS 端点的 384K
+      // （详见上方 DEFAULT_MAX_OUTPUT_TOKENS 的实测记录）。
+      max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       ...wireTools !== void 0 && wireTools.length > 0 ? { tools: wireTools } : {}
     });
     const url = `${CHAT_API_BASE}/chat/completions`;
@@ -32797,6 +32837,7 @@ var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path4.join(os2.homedir(), ".dsh");
 var CHANNEL_STATE_FILE = path4.join(DSH_HOME_DIR2, "channel-pack", "state.json");
 var CREDENTIAL_STORE_FILE = path4.join(DSH_HOME_DIR2, ".credentials.yaml");
 var LEGACY_CREDENTIAL_REF = "CODEARTS_ACCESS_TOKEN";
+var CATALOG_MIN_RETRY_MS = 5 * 6e4;
 function credentialRefsFromChannelState() {
   try {
     const state = JSON.parse(fs3.readFileSync(CHANNEL_STATE_FILE, "utf8"));
@@ -32831,7 +32872,8 @@ function codeArtsAccounts() {
     if (accounts.length > 0) return accounts;
   } catch {
   }
-  return credentialRefsFromStore().map((ref, index) => ({
+  const stored = credentialRefsFromStore();
+  return (stored.length > 0 ? stored : [LEGACY_CREDENTIAL_REF]).map((ref, index) => ({
     id: `codearts-store-${index + 1}`,
     nickname: "",
     credentialRef: ref
@@ -32898,8 +32940,50 @@ function apply(ctx) {
     },
     // 设置页把某个模型标成「图片」后，DSH 会把图片块交给适配器；这里给出
     // 持久化附件服务（web/headless 组合都有），缺失时适配器降级为占位文字。
-    resolveAttachments: () => ctx.get("attachments")
+    resolveAttachments: () => ctx.get("attachments"),
+    // 目录懒加载入口（实现在本调用之后：闭包只在 DSH 构建模型目录时被调用，
+    // 那时它已初始化）。空数组表示本次没拿到 —— 适配器会回落到静态兜底表。
+    fetchRemoteModels: () => loadRemoteModels()
   });
+  let catalogFetchedAt = 0;
+  let catalogAttemptAt = 0;
+  let catalogInFlight;
+  async function loadRemoteModels() {
+    if (catalogInFlight !== void 0) return catalogInFlight;
+    catalogAttemptAt = Date.now();
+    catalogInFlight = (async () => {
+      const found = await resolveCodeArtsCredential(ctx);
+      if (found === void 0) return [];
+      try {
+        const models = await fetchCodeArtsRemoteModels(found.credential, transport.fetch);
+        if (models.length > 0) {
+          codeArtsLlm.setRemoteModels(models);
+          catalogFetchedAt = Date.now();
+        }
+        return models;
+      } catch (error) {
+        ctx.logger?.warn?.(
+          `dsh-ofm-huawei-codearts: \u5237\u65B0\u6A21\u578B\u76EE\u5F55\u5931\u8D25\uFF08\u4FDD\u7559\u65E7\u76EE\u5F55\uFF09: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return [];
+      }
+    })().finally(() => {
+      catalogInFlight = void 0;
+    });
+    return catalogInFlight;
+  }
+  async function refreshCatalogIfStale(minIntervalMs) {
+    if (Date.now() - catalogFetchedAt < minIntervalMs) return;
+    if (Date.now() - catalogAttemptAt < CATALOG_MIN_RETRY_MS) return;
+    await loadRemoteModels();
+  }
+  const catalogTimer = setInterval(
+    () => {
+      void refreshCatalogIfStale(MODEL_REFRESH_INTERVAL_MS);
+    },
+    MODEL_REFRESH_INTERVAL_MS
+  );
+  ctx.effect(() => () => clearInterval(catalogTimer), "dsh-ofm-huawei-codearts: model catalog refresh");
   const autoCheckin = createAutoCheckin({
     store: createFileAutoCheckinStore({
       home: resolveAutoCheckinHome(ctx),
@@ -32947,7 +33031,11 @@ function apply(ctx) {
       // 模型与图片能力：GET/POST /models。只存与目录不同的行（见
       // src/model-settings.js），保存后下一次请求即生效，无需重启。
       modelsDeps: {
-        getCatalog: () => codeArtsLlm.catalogRows(),
+        // 打开设置页时若目录已过刷新窗口，先刷一次再返回（见上面的自动更新段）。
+        getCatalog: async () => {
+          await refreshCatalogIfStale(MODEL_REFRESH_INTERVAL_MS);
+          return codeArtsLlm.catalogRows();
+        },
         settingsPath: () => modelsSettingsPath()
       }
     });

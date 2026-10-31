@@ -36,6 +36,7 @@ import { signRequestHuawei } from './sign.js'
 import { isCredentialExpiredMessage } from './balance-route.js'
 import { createAdminRoute } from './admin-route.js'
 import { modelsSettingsPath } from './model-settings.js'
+import { fetchCodeArtsRemoteModels, MODEL_REFRESH_INTERVAL_MS } from './models.js'
 import {
   claimCodeArtsDailyCheckin,
   createAutoCheckin,
@@ -59,6 +60,9 @@ const CREDENTIAL_STORE_FILE = path.join(DSH_HOME_DIR, '.credentials.yaml')
 
 /** 上游早期使用过的固定凭据 ref，作为最后兜底。 */
 const LEGACY_CREDENTIAL_REF = 'CODEARTS_ACCESS_TOKEN'
+
+/** 目录刷新失败后的最小重试间隔：避免设置页每次打开都打一次网络。 */
+const CATALOG_MIN_RETRY_MS = 5 * 60_000
 
 /**
  * 从 channel-pack 的 state.json 读取 CodeArts 账号的 credentialRef。
@@ -126,7 +130,12 @@ function codeArtsAccounts(): Array<{ id: string; nickname: string; credentialRef
   } catch {
     // state.json 缺失/损坏：走下面的凭据扫描兜底
   }
-  return credentialRefsFromStore().map((ref, index) => ({
+  // 凭据 ref 兜底：优先扫 `CODEARTS_ACCOUNT_*`；**一个都没有时**（全新克隆、从没跑过
+  // `dsh-our-free-model`：设置页的登录按钮只会写入历史常量 `CODEARTS_ACCESS_TOKEN`）
+  // 退回 {@link LEGACY_CREDENTIAL_REF} —— 否则「clone 下来即插即用」的机器上每日签到
+  // 会静默不执行（LLM 路径不受影响：它走的 candidateCredentialRefs 本就含该常量）。
+  const stored = credentialRefsFromStore()
+  return (stored.length > 0 ? stored : [LEGACY_CREDENTIAL_REF]).map((ref, index) => ({
     id: `codearts-store-${index + 1}`,
     nickname: '',
     credentialRef: ref,
@@ -227,7 +236,64 @@ export function apply(ctx: any): void {
     // 设置页把某个模型标成「图片」后，DSH 会把图片块交给适配器；这里给出
     // 持久化附件服务（web/headless 组合都有），缺失时适配器降级为占位文字。
     resolveAttachments: () => ctx.get('attachments') as ImageAttachmentStore | undefined,
+    // 目录懒加载入口（实现在本调用之后：闭包只在 DSH 构建模型目录时被调用，
+    // 那时它已初始化）。空数组表示本次没拿到 —— 适配器会回落到静态兜底表。
+    fetchRemoteModels: () => loadRemoteModels(),
   })
+
+  // ── 模型目录的自动更新 ────────────────────────────────────────────────
+  // 需求（2026-10-31）：目录要自己跟上云端，不能「启动拉一次、重启才更新」。
+  //   ① 构建模型目录时按需拉 —— 适配器 `ensureRemoteModels()`
+  //      → 上面的 `fetchRemoteModels`
+  //   ② 进程常驻期间每 {@link MODEL_REFRESH_INTERVAL_MS}（2h）拉一次 —— 下面的定时器
+  //   ③ 设置页每次读取目录时，若已过刷新窗口再拉一次 —— `modelsDeps.getCatalog`
+  // 三个入口共用同一个加载器：并发去重 + 成功窗口防抖 + 失败最小重试间隔 +
+  // 失败只告警（保留旧目录）。全程只有签名 GET（拉目录不调用模型、不消耗积分）。
+  //
+  // ⚠️ 为什么必须有个「外部推」的入口：适配器把 provider 目录缓存住之后，
+  // DSH 不会再调 `listModels()`，光靠 ① 永远等不到新模型（本轮实测：云端已有
+  // `deepseek-v4.1-flash-1017`，本机列表停在首屏那一版）。
+  let catalogFetchedAt = 0
+  let catalogAttemptAt = 0
+  let catalogInFlight: Promise<Array<{ id: string; name: string }>> | undefined
+
+  /** 拉一次云端目录并推给适配器；并发调用共享同一个 Promise，失败返回空数组。 */
+  async function loadRemoteModels(): Promise<Array<{ id: string; name: string }>> {
+    if (catalogInFlight !== undefined) return catalogInFlight
+    catalogAttemptAt = Date.now()
+    catalogInFlight = (async () => {
+      const found = await resolveCodeArtsCredential(ctx)
+      if (found === undefined) return []
+      try {
+        const models = await fetchCodeArtsRemoteModels(found.credential, transport.fetch)
+        if (models.length > 0) {
+          codeArtsLlm.setRemoteModels(models)
+          catalogFetchedAt = Date.now()
+        }
+        return models
+      } catch (error) {
+        ctx.logger?.warn?.(
+          `dsh-ofm-huawei-codearts: 刷新模型目录失败（保留旧目录）: `
+          + `${error instanceof Error ? error.message : String(error)}`,
+        )
+        return []
+      }
+    })().finally(() => { catalogInFlight = undefined })
+    return catalogInFlight
+  }
+
+  /** 距上次**成功**不足 minIntervalMs、或距上次尝试不足 5 分钟时不重复打网络。 */
+  async function refreshCatalogIfStale(minIntervalMs: number): Promise<void> {
+    if (Date.now() - catalogFetchedAt < minIntervalMs) return
+    if (Date.now() - catalogAttemptAt < CATALOG_MIN_RETRY_MS) return
+    await loadRemoteModels()
+  }
+
+  const catalogTimer = setInterval(
+    () => { void refreshCatalogIfStale(MODEL_REFRESH_INTERVAL_MS) },
+    MODEL_REFRESH_INTERVAL_MS,
+  )
+  ctx.effect(() => () => clearInterval(catalogTimer), 'dsh-ofm-huawei-codearts: model catalog refresh')
 
   // 每日自动签到：上游 dsh-our-free-model 不再覆盖 codearts 渠道后，这条能力
   // 随渠道一起丢失；这里用同一份 auto-checkin.json 文档恢复，状态与上游
@@ -285,7 +351,11 @@ export function apply(ctx: any): void {
       // 模型与图片能力：GET/POST /models。只存与目录不同的行（见
       // src/model-settings.js），保存后下一次请求即生效，无需重启。
       modelsDeps: {
-        getCatalog: () => codeArtsLlm.catalogRows(),
+        // 打开设置页时若目录已过刷新窗口，先刷一次再返回（见上面的自动更新段）。
+        getCatalog: async () => {
+          await refreshCatalogIfStale(MODEL_REFRESH_INTERVAL_MS)
+          return codeArtsLlm.catalogRows()
+        },
         settingsPath: () => modelsSettingsPath(),
       },
     })

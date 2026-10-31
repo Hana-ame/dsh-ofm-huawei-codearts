@@ -18,8 +18,8 @@
  * ## 为什么 project id 用 40 hex
  *
  * 真实取值是 `sha1("git-remote:" + 归一化 remote URL)`
- * （`packages/core/src/project.ts` 的 `resolve()`），本机 opencode.db 实测
- * 形如 `895debfe16b1fcca5ebfa2e24b7b914797e632ec`。
+ * （`packages/core/src/project.ts` 的 `resolve()`），
+ * 形如 `0123456789abcdef0123456789abcdef01234567`（形状示意，非任何真实仓库的哈希）。
  * opencode2dsh 用的是 `prj_<24hex>`（无依据的服务端形状猜测），我们跟真实 CLI 同形。
  *
  * ## session id 的形状不是随意选的

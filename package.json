@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "恢复上游 2.5.9 删除的华为云 CodeArts 渠道：独立 DSH 插件，在模型选择器注册 CodeArts Agent，复用已有账号与凭据，不修改 dsh-our-free-model。",
+  "author": "nanaka",
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
@@ -22,6 +23,13 @@
     }
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hana-ame/dsh-ofm-huawei-codearts.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-credentials": "^0.1.2-rc.1 || ^0.1.7-rc.2 || ^0.2.0-rc.1",
