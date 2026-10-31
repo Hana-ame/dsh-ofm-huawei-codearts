@@ -1139,14 +1139,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path4 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path5 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path4 && path4[0] !== "/") {
-          path4 = `/${path4}`;
+        if (path5 && path5[0] !== "/") {
+          path5 = `/${path5}`;
         }
-        return new URL(`${origin}${path4}`);
+        return new URL(`${origin}${path5}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -2017,9 +2017,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path4, origin }
+            request: { method, path: path5, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path4);
+          debugLog("sending request to %s %s%s", method, origin, path5);
         }
       );
     }
@@ -2037,14 +2037,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path4, origin },
+            request: { method, path: path5, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path4,
+            path5,
             statusCode
           );
         }
@@ -2053,23 +2053,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path4, origin }
+            request: { method, path: path5, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path4);
+          debugLog("trailers received from %s %s%s", method, origin, path5);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path4, origin },
+            request: { method, path: path5, origin },
             error
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path4,
+            path5,
             error.message
           );
         }
@@ -2224,7 +2224,7 @@ var require_request = __commonJS({
     };
     var Request2 = class {
       constructor(origin, {
-        path: path4,
+        path: path5,
         method,
         body,
         headers,
@@ -2241,11 +2241,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path4 !== "string") {
+        if (typeof path5 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path4[0] !== "/" && !(path4.startsWith("http://") || path4.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path5[0] !== "/" && !(path5.startsWith("http://") || path5.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path4)) {
+        } else if (invalidPathRegex.test(path5)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2320,7 +2320,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path4, query) : path4;
+        this.path = query ? serializePathWithQuery(path5, query) : path5;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" || method === "QUERY" : idempotent;
@@ -7406,7 +7406,7 @@ var require_client_h1 = __commonJS({
       }
     }
     function writeH1(client, request) {
-      const { method, path: path4, host, upgrade, blocking, reset } = request;
+      const { method, path: path5, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util3.isFormDataLike(body)) {
@@ -7482,7 +7482,7 @@ var require_client_h1 = __commonJS({
         socket[kBlocking] = true;
       }
       setTypeOfService(socket, request);
-      let header = `${method} ${path4} HTTP/1.1\r
+      let header = `${method} ${path5} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -8563,7 +8563,7 @@ var require_client_h2 = __commonJS({
       const headersTimeout = request.headersTimeout ?? client[kHeadersTimeout];
       const bodyTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path4, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path5, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util3.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
         return false;
@@ -8626,7 +8626,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path4;
+          headers[HTTP2_HEADER_PATH] = path5;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8648,7 +8648,7 @@ var require_client_h2 = __commonJS({
         setupUpgradeStream(stream, state);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path4;
+      headers[HTTP2_HEADER_PATH] = path5;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       let body = state.body;
@@ -11318,10 +11318,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path4 = "/",
+          path: path5 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path4;
+        opts.path = origin + path5;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -13586,20 +13586,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path4) {
-      if (typeof path4 !== "string") {
-        return path4;
+    function safeUrl(path5) {
+      if (typeof path5 !== "string") {
+        return path5;
       }
-      const pathSegments = path4.split("?", 3);
+      const pathSegments = path5.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path4;
+        return path5;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path4, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path4);
+    function matchKey(mockDispatch2, { path: path5, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path5);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -13626,8 +13626,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path4, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path4)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path4), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path5, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path5)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path5), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -13666,22 +13666,22 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path4) {
-      if (typeof path4 !== "string") {
-        return path4;
+    function removeTrailingSlash(path5) {
+      if (typeof path5 !== "string") {
+        return path5;
       }
-      while (path4.endsWith("/")) {
-        path4 = path4.slice(0, -1);
+      while (path5.endsWith("/")) {
+        path5 = path5.slice(0, -1);
       }
-      if (path4.length === 0) {
-        path4 = "/";
+      if (path5.length === 0) {
+        path5 = "/";
       }
-      return path4;
+      return path5;
     }
     function buildKey(opts) {
-      const { path: path4, method, body, headers, query } = opts;
+      const { path: path5, method, body, headers, query } = opts;
       return {
-        path: path4,
+        path: path5,
         method,
         body,
         headers,
@@ -14552,10 +14552,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path4, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
+          ({ method, path: path5, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path4,
+            Path: path5,
             "Status code": statusCode,
             Persistent: persist2 ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -14637,9 +14637,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path4, searchParams] = dispatchOpts.path.split("?");
+          const [path5, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path4}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path5}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -15039,14 +15039,14 @@ var require_snapshot_recorder = __commonJS({
         }
         const request = formatRequestKey(requestOpts, this.#headerFilters, this.matchOptions);
         const hash = createRequestHash(request);
-        const snapshot = this.#snapshots.get(hash);
-        if (!snapshot) return void 0;
-        const currentCallCount = snapshot.callCount || 0;
-        const responseIndex = Math.min(currentCallCount, snapshot.responses.length - 1);
-        snapshot.callCount = currentCallCount + 1;
+        const snapshot2 = this.#snapshots.get(hash);
+        if (!snapshot2) return void 0;
+        const currentCallCount = snapshot2.callCount || 0;
+        const responseIndex = Math.min(currentCallCount, snapshot2.responses.length - 1);
+        snapshot2.callCount = currentCallCount + 1;
         return {
-          ...snapshot,
-          response: snapshot.responses[responseIndex]
+          ...snapshot2,
+          response: snapshot2.responses[responseIndex]
         };
       }
       /**
@@ -15055,17 +15055,17 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path4 = filePath || this.#snapshotPath;
-        if (!path4) {
+        const path5 = filePath || this.#snapshotPath;
+        if (!path5) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path4), "utf8");
+          const data = await readFile(resolve(path5), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
-            for (const { hash, snapshot } of parsed) {
-              this.#snapshots.set(hash, snapshot);
+            for (const { hash, snapshot: snapshot2 } of parsed) {
+              this.#snapshots.set(hash, snapshot2);
             }
           } else {
             this.#snapshots = new Map(Object.entries(parsed));
@@ -15074,7 +15074,7 @@ var require_snapshot_recorder = __commonJS({
           if (error.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path4}`, { cause: error });
+            throw new UndiciError(`Failed to load snapshots from ${path5}`, { cause: error });
           }
         }
       }
@@ -15085,15 +15085,15 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path4 = filePath || this.#snapshotPath;
-        if (!path4) {
+        const path5 = filePath || this.#snapshotPath;
+        if (!path5) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path4);
+        const resolvedPath = resolve(path5);
         await mkdir(dirname(resolvedPath), { recursive: true });
-        const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot]) => ({
+        const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot2]) => ({
           hash,
-          snapshot
+          snapshot: snapshot2
         }));
         await writeFile(resolvedPath, JSON.stringify(data, null, 2), { flush: true });
       }
@@ -15123,8 +15123,8 @@ var require_snapshot_recorder = __commonJS({
        * @returns {void}
        */
       resetCallCounts() {
-        for (const snapshot of this.#snapshots.values()) {
-          snapshot.callCount = 0;
+        for (const snapshot2 of this.#snapshots.values()) {
+          snapshot2.callCount = 0;
         }
       }
       /**
@@ -15145,15 +15145,15 @@ var require_snapshot_recorder = __commonJS({
       getSnapshotInfo(requestOpts) {
         const request = formatRequestKey(requestOpts, this.#headerFilters, this.matchOptions);
         const hash = createRequestHash(request);
-        const snapshot = this.#snapshots.get(hash);
-        if (!snapshot) return null;
+        const snapshot2 = this.#snapshots.get(hash);
+        if (!snapshot2) return null;
         return {
           hash,
-          request: snapshot.request,
-          responseCount: snapshot.responses ? snapshot.responses.length : snapshot.response ? 1 : 0,
+          request: snapshot2.request,
+          responseCount: snapshot2.responses ? snapshot2.responses.length : snapshot2.response ? 1 : 0,
           // .response for legacy snapshots
-          callCount: snapshot.callCount || 0,
-          timestamp: snapshot.timestamp
+          callCount: snapshot2.callCount || 0,
+          timestamp: snapshot2.timestamp
         };
       }
       /**
@@ -15164,8 +15164,8 @@ var require_snapshot_recorder = __commonJS({
       replaceSnapshots(snapshotData) {
         this.#snapshots.clear();
         if (Array.isArray(snapshotData)) {
-          for (const { hash, snapshot } of snapshotData) {
-            this.#snapshots.set(hash, snapshot);
+          for (const { hash, snapshot: snapshot2 } of snapshotData) {
+            this.#snapshots.set(hash, snapshot2);
           }
         } else if (snapshotData && typeof snapshotData === "object") {
           this.#snapshots = new Map(Object.entries(snapshotData));
@@ -15303,9 +15303,9 @@ var require_snapshot_agent = __commonJS({
           if (!this[kSnapshotLoaded]) {
             return this.#asyncDispatch(opts, handler);
           }
-          const snapshot = this[kSnapshotRecorder].findSnapshot(opts);
-          if (snapshot) {
-            return this.#replaySnapshot(snapshot, handler);
+          const snapshot2 = this[kSnapshotRecorder].findSnapshot(opts);
+          if (snapshot2) {
+            return this.#replaySnapshot(snapshot2, handler);
           } else if (mode === "update") {
             return this.#recordAndReplay(opts, handler);
           } else {
@@ -15378,9 +15378,9 @@ var require_snapshot_agent = __commonJS({
        * @param {Object} handler - The handler to call with the response data.
        * @returns {void}
        */
-      #replaySnapshot(snapshot, handler) {
+      #replaySnapshot(snapshot2, handler) {
         try {
-          const { response } = snapshot;
+          const { response } = snapshot2;
           const rawHeaders = response.headers ? util3.toRawHeaders(response.headers) : [];
           const rawTrailers = response.trailers ? util3.toRawHeaders(response.trailers) : [];
           const controller = {
@@ -15442,8 +15442,8 @@ var require_snapshot_agent = __commonJS({
        * @returns {void}
        */
       #setupMockInterceptors() {
-        for (const snapshot of this[kSnapshotRecorder].getSnapshots()) {
-          const { request, responses, response } = snapshot;
+        for (const snapshot2 of this[kSnapshotRecorder].getSnapshots()) {
+          const { request, responses, response } = snapshot2;
           const url = new URL(request.url);
           const mockPool = this.get(url.origin);
           const responseData = responses ? responses[0] : response;
@@ -15726,15 +15726,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util3.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path4 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path4}`;
+        const path5 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path5}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, removeContentHeaders, this.opts.origin !== origin, this.stripHeadersOnRedirect, this.stripHeadersOnCrossOriginRedirect);
-        this.opts.path = path4;
+        this.opts.path = path5;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -17562,10 +17562,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store2, cacheKey, path4) {
+    function deleteCachedUri(store2, cacheKey, path5) {
       deleteCachedValue(store2, {
         ...cacheKey,
-        path: path4
+        path: path5
       });
       for (let i = 0; i < util3.safeHTTPMethods.length; i++) {
         const method = util3.safeHTTPMethods[i];
@@ -17573,7 +17573,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store2, {
             ...cacheKey,
             method,
-            path: path4
+            path: path5
           });
         }
       }
@@ -17584,9 +17584,9 @@ var require_cache_handler = __commonJS({
       }
       const values = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i = 0; i < values.length; i++) {
-        const path4 = getSameOriginPath(cacheKey, values[i]);
-        if (path4 !== void 0) {
-          deleteCachedUri(store2, cacheKey, path4);
+        const path5 = getSameOriginPath(cacheKey, values[i]);
+        if (path5 !== void 0) {
+          deleteCachedUri(store2, cacheKey, path5);
         }
       }
     }
@@ -22583,13 +22583,13 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path4 = url.pathname + url.search;
+        const path5 = url.pathname + url.search;
         const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
         return dispatchWithProtocolPreference(body);
         function dispatchWithProtocolPreference(body2, allowH2) {
           return new Promise((resolve, reject) => agent.dispatch(
             {
-              path: hasTrailingQuestionMark ? `${path4}?` : path4,
+              path: hasTrailingQuestionMark ? `${path5}?` : path5,
               origin: url.origin,
               method: request.method,
               body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body2,
@@ -23104,8 +23104,8 @@ var require_cache3 = __commonJS({
        * @returns {requestResponseList}
        */
       #batchCacheOperations(operations) {
-        const cache2 = this.#relevantRequestResponseList;
-        const backupCache = [...cache2];
+        const cache3 = this.#relevantRequestResponseList;
+        const backupCache = [...cache3];
         const addedItems = [];
         const resultList = [];
         try {
@@ -23132,9 +23132,9 @@ var require_cache3 = __commonJS({
                 return [];
               }
               for (const requestResponse of requestResponses) {
-                const idx = cache2.indexOf(requestResponse);
+                const idx = cache3.indexOf(requestResponse);
                 assert(idx !== -1);
-                cache2.splice(idx, 1);
+                cache3.splice(idx, 1);
               }
             } else if (operation.type === "put") {
               if (operation.response == null) {
@@ -23164,11 +23164,11 @@ var require_cache3 = __commonJS({
               }
               requestResponses = this.#queryCache(operation.request);
               for (const requestResponse of requestResponses) {
-                const idx = cache2.indexOf(requestResponse);
+                const idx = cache3.indexOf(requestResponse);
                 assert(idx !== -1);
-                cache2.splice(idx, 1);
+                cache3.splice(idx, 1);
               }
-              cache2.push([operation.request, operation.response]);
+              cache3.push([operation.request, operation.response]);
               addedItems.push([operation.request, operation.response]);
             }
             resultList.push([operation.request, operation.response]);
@@ -23345,13 +23345,13 @@ var require_cachestorage = __commonJS({
         if (options.cacheName != null) {
           if (this.#caches.has(options.cacheName)) {
             const cacheList = this.#caches.get(options.cacheName);
-            const cache2 = new Cache(kConstruct, cacheList);
-            return await cache2.match(request, options);
+            const cache3 = new Cache(kConstruct, cacheList);
+            return await cache3.match(request, options);
           }
         } else {
           for (const cacheList of this.#caches.values()) {
-            const cache2 = new Cache(kConstruct, cacheList);
-            const response = await cache2.match(request, options);
+            const cache3 = new Cache(kConstruct, cacheList);
+            const response = await cache3.match(request, options);
             if (response !== void 0) {
               return response;
             }
@@ -23381,12 +23381,12 @@ var require_cachestorage = __commonJS({
         webidl.argumentLengthCheck(arguments, 1, prefix);
         cacheName = webidl.converters.DOMString(cacheName, prefix, "cacheName");
         if (this.#caches.has(cacheName)) {
-          const cache3 = this.#caches.get(cacheName);
-          return new Cache(kConstruct, cache3);
+          const cache4 = this.#caches.get(cacheName);
+          return new Cache(kConstruct, cache4);
         }
-        const cache2 = [];
-        this.#caches.set(cacheName, cache2);
-        return new Cache(kConstruct, cache2);
+        const cache3 = [];
+        this.#caches.set(cacheName, cache3);
+        return new Cache(kConstruct, cache3);
       }
       /**
        * @see https://w3c.github.io/ServiceWorker/#cache-storage-delete
@@ -23501,9 +23501,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path4) {
-      for (let i = 0; i < path4.length; ++i) {
-        const code = path4.charCodeAt(i);
+    function validateCookiePath(path5) {
+      for (let i = 0; i < path5.length; ++i) {
+        const code = path5.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude non-ascii and DEL
         code === 59) {
@@ -26875,11 +26875,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path4 = opts.path;
+          let path5 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path4 = `/${path4}`;
+            path5 = `/${path5}`;
           }
-          url = new URL(util3.parseOrigin(url).origin + path4);
+          url = new URL(util3.parseOrigin(url).origin + path5);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -26989,9 +26989,9 @@ ${captureLines}` : capture.stack;
 });
 
 // src/index.ts
-import fs2 from "node:fs";
-import os from "node:os";
-import path3 from "node:path";
+import fs3 from "node:fs";
+import os2 from "node:os";
+import path4 from "node:path";
 import { credentialRef as credentialRef3 } from "@deepseek-ai/dsh-credentials";
 
 // src/direct-fetch.ts
@@ -29116,10 +29116,10 @@ function parseModelInfo(m, seen) {
   seen.add(id);
   return { id, name: name2 };
 }
-function extractJsonArray(text, path4) {
+function extractJsonArray(text, path5) {
   try {
     let value = JSON.parse(text);
-    for (const key of path4) {
+    for (const key of path5) {
       if (typeof value !== "object" || value === null) return void 0;
       value = value[key];
     }
@@ -29210,14 +29210,14 @@ function benefitCachePath() {
   return dir === void 0 ? void 0 : `${dir}/${CODEARTS_BENEFIT_CACHE_FILENAME}`;
 }
 function saveModelsCache(models) {
-  const path4 = modelsCachePath();
-  if (!path4) return;
-  const dir = path4.slice(0, path4.lastIndexOf("/"));
+  const path5 = modelsCachePath();
+  if (!path5) return;
+  const dir = path5.slice(0, path5.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path4 + ".tmp";
+    const tmp = path5 + ".tmp";
     writeFileSync(tmp, JSON.stringify(models), "utf-8");
-    renameSync(tmp, path4);
+    renameSync(tmp, path5);
   } catch {
   }
 }
@@ -29225,23 +29225,23 @@ function setMemoryCache(models) {
   memoryCache = models;
 }
 function saveBenefitCache(ids) {
-  const path4 = benefitCachePath();
-  if (!path4) return;
-  const dir = path4.slice(0, path4.lastIndexOf("/"));
+  const path5 = benefitCachePath();
+  if (!path5) return;
+  const dir = path5.slice(0, path5.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path4 + ".tmp";
+    const tmp = path5 + ".tmp";
     writeFileSync(tmp, JSON.stringify(ids), "utf-8");
-    renameSync(tmp, path4);
+    renameSync(tmp, path5);
   } catch {
   }
 }
 function loadBenefitCache() {
-  const path4 = benefitCachePath();
-  if (!path4) return void 0;
+  const path5 = benefitCachePath();
+  if (!path5) return void 0;
   try {
-    if (!existsSync(path4)) return void 0;
-    const text = readFileSync(path4, "utf-8");
+    if (!existsSync(path5)) return void 0;
+    const text = readFileSync(path5, "utf-8");
     const ids = JSON.parse(text);
     if (!Array.isArray(ids) || ids.length === 0) return void 0;
     return ids.filter((id) => typeof id === "string");
@@ -29859,6 +29859,232 @@ function normalizeHarnessMessages(messages) {
   return normalized;
 }
 
+// src/image-projection.js
+var DEFAULT_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+async function imageUrlOf(block, deps = {}) {
+  const attachments = deps.attachments;
+  if (typeof attachments?.readImageRequest !== "function") {
+    return { placeholder: "[image omitted: attachment service unavailable]" };
+  }
+  try {
+    const request = await attachments.readImageRequest(
+      block.attachment,
+      {
+        width: 1024,
+        height: 1024,
+        maxBytes: Number(deps.maxRequestImageBytes) > 0 ? Number(deps.maxRequestImageBytes) : DEFAULT_IMAGE_MAX_BYTES
+      },
+      deps.signal
+    );
+    if (request === void 0 || request === null || typeof request.mediaType !== "string" || request.data === void 0) {
+      return { placeholder: "[image omitted: unreadable attachment]" };
+    }
+    return { url: `data:${request.mediaType};base64,${Buffer.from(request.data).toString("base64")}` };
+  } catch (error) {
+    return { placeholder: `[image omitted: ${error instanceof Error ? error.message : String(error)}]` };
+  }
+}
+async function userContentOf(content, deps = {}) {
+  const images = [];
+  if (typeof content === "string") return { text: content, images };
+  if (!Array.isArray(content)) return { text: "", images };
+  const text = [];
+  for (const block of content) {
+    if (block === null || typeof block !== "object") continue;
+    const typed = (
+      /** @type {{ type?: unknown, text?: unknown, offloaded?: unknown }} */
+      block
+    );
+    if (typed.type === "text" && typeof typed.text === "string" && typed.text !== "") {
+      text.push(typed.text);
+      continue;
+    }
+    if (typed.type !== "image") continue;
+    if (deps.allowImages !== true) continue;
+    if (typed.offloaded === true) {
+      text.push("[image omitted: offloaded]");
+      continue;
+    }
+    const resolved = await imageUrlOf(block, deps);
+    if (resolved.url !== void 0) images.push({ type: "image_url", image_url: { url: resolved.url } });
+    else if (resolved.placeholder !== void 0) text.push(resolved.placeholder);
+  }
+  return { text: text.join("\n"), images };
+}
+
+// src/model-settings.js
+import fs from "node:fs";
+import os from "node:os";
+import path2 from "node:path";
+var DSH_HOME_DIR = process.env.DSH_HOME ?? path2.join(os.homedir(), ".dsh");
+var DEFAULT_MODELS_FILE = path2.join(DSH_HOME_DIR, "dsh-ofm-huawei-codearts", "models.json");
+function modelsSettingsPath() {
+  const fromEnv = String(process.env.CODEARTS_MODELS_FILE ?? "").trim();
+  return fromEnv.length > 0 ? fromEnv : DEFAULT_MODELS_FILE;
+}
+function emptyModelSettings() {
+  return { version: 1, overrides: [], removed: [], updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+}
+function normalizeModalities(value) {
+  const list = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const out = ["text"];
+  for (const entry of list) {
+    if (String(entry).trim().toLowerCase() === "image" && !out.includes("image")) out.push("image");
+  }
+  return out;
+}
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : void 0;
+}
+function normalizeModelRow(entry) {
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return void 0;
+  const raw = (
+    /** @type {Record<string, unknown>} */
+    entry
+  );
+  const id = String(raw.id ?? "").trim();
+  if (id === "" || id.length > 200) return void 0;
+  const override = { id };
+  const name2 = String(raw.name ?? "").trim();
+  if (name2 !== "") override.name = name2.slice(0, 200);
+  const contextWindow = positiveInteger(raw.contextWindow);
+  if (contextWindow !== void 0) override.contextWindow = contextWindow;
+  const maxOutput = positiveInteger(raw.maxOutput);
+  if (maxOutput !== void 0) override.maxOutput = maxOutput;
+  if (raw.inputModalities !== void 0) override.inputModalities = normalizeModalities(raw.inputModalities);
+  return override;
+}
+function readModelSettings(file = modelsSettingsPath()) {
+  try {
+    const parsed = (
+      /** @type {Record<string, unknown> | null} */
+      JSON.parse(fs.readFileSync(file, "utf8"))
+    );
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return emptyModelSettings();
+    const seen = /* @__PURE__ */ new Set();
+    const overrides = [];
+    for (const raw of Array.isArray(parsed.overrides) ? parsed.overrides : []) {
+      const normalized = normalizeModelRow(raw);
+      if (normalized === void 0 || seen.has(normalized.id)) continue;
+      seen.add(normalized.id);
+      overrides.push(normalized);
+    }
+    const removed = [
+      ...new Set(
+        (Array.isArray(parsed.removed) ? parsed.removed : []).map((value) => String(value ?? "").trim()).filter((value) => value !== "" && !seen.has(value))
+      )
+    ];
+    return {
+      version: 1,
+      overrides,
+      removed,
+      updatedAt: String(parsed.updatedAt ?? "")
+    };
+  } catch {
+    return emptyModelSettings();
+  }
+}
+function writeModelSettings(settings, file = modelsSettingsPath()) {
+  fs.mkdirSync(path2.dirname(file), { recursive: true });
+  const temporary = `${file}.tmp-${process.pid}`;
+  fs.writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}
+`, { mode: 384 });
+  fs.renameSync(temporary, file);
+}
+function clearModelSettings(file = modelsSettingsPath()) {
+  try {
+    fs.rmSync(file, { force: true });
+  } catch {
+  }
+}
+var cache;
+function cachedModelSettings(file = modelsSettingsPath()) {
+  let mtimeMs = -1;
+  try {
+    mtimeMs = fs.statSync(file).mtimeMs;
+  } catch {
+    mtimeMs = -1;
+  }
+  if (cache !== void 0 && cache.file === file && cache.mtimeMs === mtimeMs) return cache.settings;
+  const settings = readModelSettings(file);
+  cache = { file, mtimeMs, settings };
+  return settings;
+}
+function invalidateModelSettingsCache() {
+  cache = void 0;
+}
+function applyModelSettings(catalog, settings) {
+  const removed = new Set(settings.removed);
+  const overrideById = new Map(settings.overrides.map((override) => [override.id, override]));
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const row of catalog) {
+    const id = String(row?.id ?? "").trim();
+    if (id === "" || removed.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    const override = overrideById.get(id);
+    const contextWindow = override?.contextWindow ?? row.contextWindow;
+    const maxOutput = override?.maxOutput ?? row.maxOutput;
+    out.push({
+      id,
+      name: override?.name ?? String(row.name ?? id),
+      ...contextWindow !== void 0 ? { contextWindow } : {},
+      ...maxOutput !== void 0 ? { maxOutput } : {},
+      inputModalities: override?.inputModalities ?? ["text"]
+    });
+  }
+  for (const override of settings.overrides) {
+    if (seen.has(override.id) || removed.has(override.id)) continue;
+    seen.add(override.id);
+    out.push({
+      id: override.id,
+      name: override.name ?? override.id,
+      ...override.contextWindow !== void 0 ? { contextWindow: override.contextWindow } : {},
+      ...override.maxOutput !== void 0 ? { maxOutput: override.maxOutput } : {},
+      inputModalities: override.inputModalities ?? ["text"]
+    });
+  }
+  return out;
+}
+function sameModalities(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+function diffModelSettings(catalog, submitted, removedIds = []) {
+  const catalogById = /* @__PURE__ */ new Map();
+  for (const row of catalog) {
+    const id = String(row?.id ?? "").trim();
+    if (id !== "") catalogById.set(id, row);
+  }
+  const removed = [
+    ...new Set(
+      removedIds.map((value) => String(value ?? "").trim()).filter((value) => value !== "")
+    )
+  ];
+  const overrides = [];
+  for (const raw of submitted) {
+    const row = normalizeModelRow(raw);
+    if (row === void 0 || removed.includes(row.id)) continue;
+    const base = catalogById.get(row.id);
+    if (base === void 0) {
+      overrides.push({ ...row, inputModalities: row.inputModalities ?? ["text"] });
+      continue;
+    }
+    const baseName = String(base.name ?? base.id);
+    const diff = { id: row.id };
+    if (row.name !== void 0 && row.name !== baseName) diff.name = row.name;
+    if (row.contextWindow !== void 0 && row.contextWindow !== base.contextWindow) {
+      diff.contextWindow = row.contextWindow;
+    }
+    if (row.maxOutput !== void 0 && row.maxOutput !== base.maxOutput) diff.maxOutput = row.maxOutput;
+    if (row.inputModalities !== void 0 && !sameModalities(row.inputModalities, ["text"])) {
+      diff.inputModalities = row.inputModalities;
+    }
+    if (Object.keys(diff).length > 1) overrides.push(diff);
+  }
+  return { version: 1, overrides, removed, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+}
+
 // src/sse.ts
 import { EMPTY_RESPONSE_CODE, LlmError } from "@deepseek-ai/dsh-llm";
 async function readWithIdleTimeout(reader, timeoutMs, label, signal, phase = "chunk") {
@@ -30222,8 +30448,8 @@ var MemoryDeadModelStore = class {
   }
 };
 var FileDeadModelStore = class {
-  constructor(path4, logger2) {
-    this.path = path4;
+  constructor(path5, logger2) {
+    this.path = path5;
     this.logger = logger2;
   }
   kind = "file";
@@ -30244,7 +30470,7 @@ var FileDeadModelStore = class {
   }
 };
 var store;
-var cache;
+var cache2;
 var logger;
 var injectedCtx;
 function ensureStore() {
@@ -30260,7 +30486,7 @@ function ensureStore() {
 }
 function tryPersist(prunedCount = 0) {
   try {
-    ensureStore().save(cache ?? {});
+    ensureStore().save(cache2 ?? {});
     if (prunedCount > 0) {
       logger?.warn(`[channel-pack] \u5DF2\u5931\u6548\u6A21\u578B\u8BB0\u5F55\u6E05\u7406 ${prunedCount} \u6761\uFF08\u8D85\u8FC7 TTL\uFF09`);
     }
@@ -30274,7 +30500,7 @@ function persist(prunedCount = 0) {
   tryPersist(prunedCount);
 }
 function loadRecords() {
-  if (cache !== void 0) return cache;
+  if (cache2 !== void 0) return cache2;
   const raw = ensureStore().load();
   const ttl = ttlMs();
   const now = Date.now();
@@ -30294,7 +30520,7 @@ function loadRecords() {
     }
     if (Object.keys(keep).length > 0) out[provider] = keep;
   }
-  cache = out;
+  cache2 = out;
   if (pruned > 0) persist(pruned);
   return out;
 }
@@ -30641,7 +30867,7 @@ function contentToText(content) {
   if (!Array.isArray(content)) return "";
   return content.filter((block) => typeof block === "object" && block !== null && block.type === "text").map((block) => String(block.text)).join("");
 }
-function serializeMessages(messages) {
+async function serializeMessages(messages, deps = {}) {
   const normalized = normalizeHarnessMessages(messages);
   const wire = [];
   const { keepCallIds, keepResultIds } = resolveToolPairing(normalized);
@@ -30657,11 +30883,11 @@ function serializeMessages(messages) {
         function: { name: String(block.name), arguments: normalizeToolArguments(String(block.arguments)) }
       }));
       const reasoning = content2.filter((block) => typeof block === "object" && block !== null && block.type === "reasoning").map((block) => String(block.text)).join("");
-      const text2 = contentToText(content2);
-      if (text2.trim().length === 0 && toolCalls.length === 0) continue;
+      const text = contentToText(content2);
+      if (text.trim().length === 0 && toolCalls.length === 0) continue;
       wire.push({
         role: "assistant",
-        content: text2,
+        content: text,
         // 后端（deepseek-v4-flash/pro）校验要求 assistant 消息必须包含
         // reasoning_content 字段：历史里的推理块在上一轮被持久化，回传时
         // 若缺失该字段会直接 400（"Missing `reasoning_content` field"）。
@@ -30677,15 +30903,25 @@ function serializeMessages(messages) {
     }
     const content = Array.isArray(message2.content) ? message2.content : [];
     const toolResults = content.filter((block) => typeof block === "object" && block !== null && block.type === "tool-result");
-    const text = contentToText(message2.content);
-    if (text.trim().length > 0) wire.push({ role: "user", content: text });
+    const userContent = await userContentOf(message2.content, deps);
+    if (userContent.text.trim().length > 0 || userContent.images.length > 0) {
+      wire.push({
+        role: "user",
+        content: userContent.images.length === 0 ? userContent.text : [
+          ...userContent.text.trim().length > 0 ? [{ type: "text", text: userContent.text }] : [],
+          ...userContent.images
+        ]
+      });
+    }
     for (const result of toolResults) {
       if (!keepResultIds.has(String(result.toolCallId))) continue;
+      const resultContent = await userContentOf(result.content, deps);
       wire.push({
         role: "tool",
         tool_call_id: String(result.toolCallId),
-        content: contentToText(result.content) || "(no output)"
+        content: resultContent.text || "(no output)"
       });
+      if (resultContent.images.length > 0) wire.push({ role: "user", content: resultContent.images });
     }
   }
   return wire;
@@ -31080,15 +31316,58 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const visible = this.listAllModels();
     const disabled = this.options.accountPool?.disabledModelsFor(PROVIDER);
     const listed = disabled === void 0 || disabled.size === 0 ? visible : visible.filter((m) => !disabled.has(m.id));
-    return listed.map((m) => ({ provider: PROVIDER, id: m.id, name: m.name, inputModalities: ["text"] }));
+    const effective = applyModelSettings(this.catalogFrom(listed), cachedModelSettings());
+    return effective.map((m) => ({
+      provider: PROVIDER,
+      id: m.id,
+      name: m.name,
+      inputModalities: m.inputModalities
+    }));
+  }
+  /**
+   * 目录原始行（未应用覆盖表），供设置页「模型与图片能力」做差异比较与展示。
+   *
+   * 两处与 `listModels` 有意不同：
+   * - 跳过 `providerCatalogVisible` 门控：未登录时也要能看到目录缓存，否则
+   *   刚装插件时用户没有可编辑的行；
+   * - **不套 `-VL-` 过滤**：视觉模型默认不进选择器（上游目录里的 VL 行历史上
+   *   不被 CodeArts Agent 使用），但设置页必须能看见它们，用户勾「图片」后
+   *   （覆盖表里多出一行）才会真正出现在模型选择器里。这是"设置图片"的关键：
+   *   不过滤掉，就永远没机会打开。
+   */
+  async catalogRows() {
+    await this.ensureRemoteModels();
+    const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }));
+    return this.catalogFrom(source);
+  }
+  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口，形成目录行。 */
+  catalogFrom(rows) {
+    return rows.map((row) => {
+      const contextWindow = CONTEXT_WINDOWS.get(row.id);
+      return contextWindow === void 0 ? { id: row.id, name: row.name } : { id: row.id, name: row.name, contextWindow };
+    });
+  }
+  /** 某个模型应用覆盖后的有效行；不在目录里时返回 undefined。 */
+  effectiveModel(model) {
+    return applyModelSettings(
+      this.catalogFrom(this.listAllModels()),
+      cachedModelSettings()
+    ).find((row) => row.id === model);
   }
   async resolveModel(provider, model, _signal) {
     await this.ensureRemoteModels();
+    const override = this.effectiveModel(model);
     const remoteModel = this.remoteModels?.find((m) => m.id === model);
-    const name2 = remoteModel?.name ?? model;
-    const contextWindow = CONTEXT_WINDOWS.get(model);
-    const resolved = { provider, id: model, name: name2 };
+    const name2 = override?.name ?? remoteModel?.name ?? model;
+    const contextWindow = override?.contextWindow ?? CONTEXT_WINDOWS.get(model);
+    const resolved = {
+      provider,
+      id: model,
+      name: name2,
+      inputModalities: override?.inputModalities ?? ["text"]
+    };
     if (contextWindow !== void 0) resolved.context = { contextWindow };
+    if (override?.maxOutput !== void 0) resolved.defaultMaxTokens = override.maxOutput;
     resolved.reasoning = {
       efforts: [
         { id: ReasoningEffortId("on"), name: "\u5F00\u542F" },
@@ -31100,7 +31379,9 @@ var CodeArtsAdapter = class extends LlmAdapter {
   }
   async prepareCall(provider, model, signal) {
     return {
-      model: { ...await this.resolveModel(provider, model, signal), inputModalities: ["text"] },
+      // 不再硬编码 text：`resolveModel` 已经带上设置页配的文字/图片模态，
+      // DSH 据此决定把历史图片投影成占位文字还是发成图片块。
+      model: await this.resolveModel(provider, model, signal),
       stream: (options) => this.stream(options)
     };
   }
@@ -31125,7 +31406,14 @@ var CodeArtsAdapter = class extends LlmAdapter {
       }
       if (currentAccountId) reportLedgerAccount(PROVIDER, currentAccountId);
     }
-    const messages = serializeMessages(options.messages);
+    const requestedModel = String(options.model ?? "");
+    const allowImages = (this.effectiveModel(requestedModel)?.inputModalities ?? ["text"]).includes("image");
+    const messages = await serializeMessages(options.messages, {
+      attachments: this.options.resolveAttachments?.(),
+      signal: options.signal,
+      maxRequestImageBytes: this.options.maxRequestImageBytes,
+      allowImages
+    });
     if (options.system !== void 0 && options.system.length > 0) {
       messages.unshift({ role: "system", content: options.system });
     }
@@ -31730,8 +32018,8 @@ function parseRateLimitError(body, currentModel, status) {
 }
 
 // src/auto-checkin.js
-import fs from "node:fs";
-import path2 from "node:path";
+import fs2 from "node:fs";
+import path3 from "node:path";
 var AUTO_CHECKIN_FILE = "auto-checkin.json";
 var AUTO_CHECKIN_SCHEMA = "dsh-codearts-auth/auto-checkin/v1";
 var AUTO_CHECKIN_DELAY_ENV = "DSH_CHANNEL_PACK_AUTO_CHECKIN_DELAY_MS";
@@ -31799,25 +32087,25 @@ function resolveAutoCheckinHome(ctx, env = process.env) {
   if (profileHome !== void 0) return profileHome;
   const envHome = env.DSH_HOME;
   if (typeof envHome === "string" && envHome.trim().length > 0) return envHome.trim();
-  return path2.join(process.env.HOME ?? "", ".dsh");
+  return path3.join(process.env.HOME ?? "", ".dsh");
 }
 function createFileAutoCheckinStore({ home, warn } = {}) {
-  const file = path2.join(home, "channel-pack", AUTO_CHECKIN_FILE);
+  const file = path3.join(home, "channel-pack", AUTO_CHECKIN_FILE);
   return {
     file,
     load() {
       try {
-        if (!fs.existsSync(file)) return sanitizeAutoCheckin(void 0);
-        return sanitizeAutoCheckin(JSON.parse(fs.readFileSync(file, "utf8")));
+        if (!fs2.existsSync(file)) return sanitizeAutoCheckin(void 0);
+        return sanitizeAutoCheckin(JSON.parse(fs2.readFileSync(file, "utf8")));
       } catch (error) {
         warn?.(`[auto-checkin] \u8BFB\u53D6 ${file} \u5931\u8D25\uFF0C\u6309\u9ED8\u8BA4\u8BBE\u7F6E\uFF08\u6253\u5F00\uFF09\u5904\u7406: ${String(error)}`);
         return sanitizeAutoCheckin(void 0);
       }
     },
     async save(doc) {
-      fs.mkdirSync(path2.dirname(file), { recursive: true });
+      fs2.mkdirSync(path3.dirname(file), { recursive: true });
       const tmp = `${file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({
+      fs2.writeFileSync(tmp, JSON.stringify({
         schema: AUTO_CHECKIN_SCHEMA,
         enabled: doc.enabled,
         lastDate: doc.lastDate,
@@ -31826,7 +32114,7 @@ function createFileAutoCheckinStore({ home, warn } = {}) {
         channels: doc.channels,
         dismissedRunAt: doc.dismissedRunAt
       }, null, 2), "utf8");
-      fs.renameSync(tmp, file);
+      fs2.renameSync(tmp, file);
     }
   };
 }
@@ -32389,14 +32677,114 @@ function createLoginRoute(deps) {
   };
 }
 
+// src/models-route.js
+var MAX_BODY_BYTES = 1024 * 1024;
+function sendJson(res, status, body) {
+  const text = JSON.stringify(body);
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(text),
+    "cache-control": "no-store"
+  });
+  res.end(text);
+}
+function sendError(res, status, message2, code = "BAD_REQUEST") {
+  sendJson(res, status, { ok: false, error: { message: message2, code } });
+}
+function isLoopback(req) {
+  const address = String(req.socket?.remoteAddress ?? "");
+  return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
+async function readBody(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) throw new Error("request body exceeds 1 MiB");
+    chunks.push(chunk);
+  }
+  if (chunks.length === 0) return {};
+  const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("request body must be a JSON object");
+  }
+  return parsed;
+}
+function snapshot(catalog, settings, settingsPath) {
+  const models = applyModelSettings(catalog, settings);
+  return {
+    ok: true,
+    settingsPath,
+    models,
+    // 诊断用：哪些目录模型被改过、哪些被移除、有哪些是目录里没有的新增行
+    overridden: settings.overrides.map((override) => override.id),
+    removed: [...settings.removed],
+    catalogIds: catalog.map((row) => String(row?.id ?? "")).filter((id) => id !== "")
+  };
+}
+function createModelsRoute(deps) {
+  return async function handler(req, res) {
+    const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname.replace(/\/+$/, "");
+    if (!pathname.endsWith("/models")) {
+      sendError(res, 404, "not found", "NOT_FOUND");
+      return;
+    }
+    if (!isLoopback(req)) {
+      sendError(res, 403, "models settings route is loopback-only", "FORBIDDEN");
+      return;
+    }
+    const settingsPath = String(deps.settingsPath?.() ?? "");
+    try {
+      const catalog = await deps.getCatalog();
+      if (req.method === "GET") {
+        sendJson(res, 200, snapshot(catalog, readModelSettings(settingsPath), settingsPath));
+        return;
+      }
+      if (req.method !== "POST") {
+        sendError(res, 405, "method not allowed", "METHOD_NOT_ALLOWED");
+        return;
+      }
+      const contentType = String(req.headers?.["content-type"] ?? "").toLowerCase();
+      if (!contentType.startsWith("application/json")) {
+        throw new Error("content-type must be application/json");
+      }
+      const body = await readBody(req);
+      if (body.reset === true) {
+        clearModelSettings(settingsPath);
+        invalidateModelSettingsCache();
+        sendJson(res, 200, snapshot(catalog, readModelSettings(settingsPath), settingsPath));
+        return;
+      }
+      if (!Array.isArray(body.models)) throw new Error("models must be an array");
+      if (body.models.length > 500) throw new Error("models must not exceed 500 rows");
+      const removed = Array.isArray(body.removed) ? body.removed : [];
+      const settings = diffModelSettings(catalog, body.models, removed);
+      for (const override of settings.overrides) {
+        if (override.inputModalities !== void 0) {
+          override.inputModalities = normalizeModalities(override.inputModalities);
+        }
+      }
+      writeModelSettings(settings, settingsPath);
+      invalidateModelSettingsCache();
+      sendJson(res, 200, snapshot(catalog, readModelSettings(settingsPath), settingsPath));
+    } catch (error) {
+      sendError(res, 400, error instanceof Error ? error.message : String(error));
+    }
+  };
+}
+
 // src/admin-route.js
 function createAdminRoute(deps) {
   const balance = createBalanceRoute(deps.balanceDeps);
   const login = createLoginRoute(deps.loginDeps);
+  const models = deps.modelsDeps === void 0 ? null : createModelsRoute(deps.modelsDeps);
   return async function handler(req, res) {
     const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname.replace(/\/+$/, "");
     if (pathname.endsWith("/login") || pathname.endsWith("/login/status")) {
       return login(req, res);
+    }
+    if (models !== null && pathname.endsWith("/models")) {
+      return models(req, res);
     }
     return balance(req, res);
   };
@@ -32405,13 +32793,13 @@ function createAdminRoute(deps) {
 // src/index.ts
 var name = "dsh-ofm-huawei-codearts";
 var inject = ["llm", "credentials"];
-var DSH_HOME_DIR = process.env.DSH_HOME ?? path3.join(os.homedir(), ".dsh");
-var CHANNEL_STATE_FILE = path3.join(DSH_HOME_DIR, "channel-pack", "state.json");
-var CREDENTIAL_STORE_FILE = path3.join(DSH_HOME_DIR, ".credentials.yaml");
+var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path4.join(os2.homedir(), ".dsh");
+var CHANNEL_STATE_FILE = path4.join(DSH_HOME_DIR2, "channel-pack", "state.json");
+var CREDENTIAL_STORE_FILE = path4.join(DSH_HOME_DIR2, ".credentials.yaml");
 var LEGACY_CREDENTIAL_REF = "CODEARTS_ACCESS_TOKEN";
 function credentialRefsFromChannelState() {
   try {
-    const state = JSON.parse(fs2.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs3.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     return (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account) => String(account.credentialRef ?? "")).filter((ref) => ref.length > 0);
   } catch {
     return [];
@@ -32419,7 +32807,7 @@ function credentialRefsFromChannelState() {
 }
 function credentialRefsFromStore() {
   try {
-    const text = fs2.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
+    const text = fs3.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
     return [...text.matchAll(/\bCODEARTS_ACCOUNT_[0-9A-Fa-f]{6,}\b/g)].map((match) => match[0]);
   } catch {
     return [];
@@ -32434,7 +32822,7 @@ function candidateCredentialRefs() {
 }
 function codeArtsAccounts() {
   try {
-    const state = JSON.parse(fs2.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs3.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     const accounts = (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account, index) => ({
       id: String(account.id ?? `codearts-${index + 1}`),
       nickname: String(account.nickname ?? ""),
@@ -32499,7 +32887,7 @@ function apply(ctx) {
   for (const ref of candidateCredentialRefs()) {
     void refreshCredentialByRef(ctx, codeArtsAuth, ref);
   }
-  registerCodeArtsLlm(ctx, {
+  const codeArtsLlm = registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。
     credentialRef: credentialRef3(LEGACY_CREDENTIAL_REF),
@@ -32507,7 +32895,10 @@ function apply(ctx) {
     refresh: async () => {
       const found = await resolveCodeArtsCredential(ctx);
       if (found) await codeArtsAuth.refreshAccountCredential(found.ref);
-    }
+    },
+    // 设置页把某个模型标成「图片」后，DSH 会把图片块交给适配器；这里给出
+    // 持久化附件服务（web/headless 组合都有），缺失时适配器降级为占位文字。
+    resolveAttachments: () => ctx.get("attachments")
   });
   const autoCheckin = createAutoCheckin({
     store: createFileAutoCheckinStore({
@@ -32552,6 +32943,12 @@ function apply(ctx) {
       // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。
       loginDeps: {
         startLogin: () => codeArtsAuth.startLogin({ refName: primaryCredentialRef() })
+      },
+      // 模型与图片能力：GET/POST /models。只存与目录不同的行（见
+      // src/model-settings.js），保存后下一次请求即生效，无需重启。
+      modelsDeps: {
+        getCatalog: () => codeArtsLlm.catalogRows(),
+        settingsPath: () => modelsSettingsPath()
       }
     });
     scoped.effect(

@@ -7,7 +7,8 @@
 - 用**独立插件**的方式恢复，不修改 `dsh-our-free-model` 任何一个字节；
 - 在 DSH 模型选择器里注册 `codearts` provider，显示为 **CodeArts Agent**；
 - 复用已有账号与凭据，不需要重新登录（刷新令牌有效期内自动续期）；
-- 保留华为的签名传输（`SDK-HMAC-SHA256`、benefit 额度重试）。
+- 保留华为的签名传输（`SDK-HMAC-SHA256`、benefit 额度重试）；
+- 设置页可**逐模型配置图片能力**（`inputModalities`），图片按 data URL 下发。
 
 ## 它和 dsh-our-free-model 怎么分工
 
@@ -173,6 +174,41 @@ CodeArts 的 STS 临时令牌约 1–2 小时寿命、**refresh_token 一次性*
   "today": "2026-10-30"
 }
 ```
+
+## 设置页：模型与图片能力（2026-10-31 新增）
+
+同一栏目的第三张卡片是「**模型与图片能力**」。适配器过去对**所有**模型硬编码
+`inputModalities: ['text']`，于是 DSH 会把历史里的图片投影成占位文字，**图片
+永远发不出去**；这张卡片就是那个开关。
+
+| 接口 | 说明 |
+|---|---|
+| `GET /api/dsh-ofm-huawei-codearts/models` | 目录（含默认被过滤的 `-VL-` 视觉模型）+ 覆盖后的有效表 |
+| `POST /api/dsh-ofm-huawei-codearts/models` | 保存 `{ models, removed }`；`{ reset: true }` 恢复目录默认 |
+
+写路径**回环限定**（模型能力会改变请求体形状：是否携带 base64 图片）。
+
+### 只存差异（为什么不是照抄 keypool 的整表）
+
+华为云目录每 2 小时刷新一次。整表落盘会让上游新增模型永远看不见，所以
+`$DSH_HOME/dsh-ofm-huawei-codearts/models.json`（`CODEARTS_MODELS_FILE` 可覆盖，
+原子写 0600）只存 **与目录不同的行** + **目录里没有的新增行** + **显式移除的
+id**；未改动的行不入库，上游改名/改窗口会自动跟随。保存后**无需重启**：
+读缓存按 mtime 失效（`src/model-settings.js`）。
+
+### 勾「图片」之后发生什么
+
+- `listModels` / `resolveModel` / `prepareCall` 返回该模型的 `inputModalities`
+  含 `image`，DSH 才会把图片块交给适配器；
+- `serializeMessages` 把图片块投影成 OpenAI `image_url` 的 data URL（附件由
+  `ctx.get('attachments')` 读取）；工具结果里内嵌的图片按 OpenAI 约定提升为
+  紧随其后的独立 user 消息；
+- 没勾的模型行为**逐字节不变**：非文本块直接丢弃（DSH 那边本就已经投影成
+  占位文字）；
+- 读不到图（没有附件服务/附件损坏）只把该图换成占位文字，**不让整轮请求失败**。
+
+⚠️ **风险**：CodeArts 端点历史上**拒绝非文本块并回空流**（旧注释即为此）。
+因此默认只有 `-VL-` 行需要用户主动勾选；勾错随时取消并保存即恢复。
 
 ## 并发与会话头（2026-10-31 修复）
 

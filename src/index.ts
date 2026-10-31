@@ -30,11 +30,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { CodeArtsAuth } from './service.js'
-import { registerCodeArtsLlm } from './llm-adapter.js'
+import { registerCodeArtsLlm, type ImageAttachmentStore } from './llm-adapter.js'
 import { createDirectFetch, attachDirectFetch } from './direct-fetch.js'
 import { signRequestHuawei } from './sign.js'
 import { isCredentialExpiredMessage } from './balance-route.js'
 import { createAdminRoute } from './admin-route.js'
+import { modelsSettingsPath } from './model-settings.js'
 import {
   claimCodeArtsDailyCheckin,
   createAutoCheckin,
@@ -214,7 +215,7 @@ export function apply(ctx: any): void {
     void refreshCredentialByRef(ctx, codeArtsAuth, ref)
   }
 
-  registerCodeArtsLlm(ctx, {
+  const codeArtsLlm = registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。
     credentialRef: credentialRef(LEGACY_CREDENTIAL_REF),
@@ -223,6 +224,9 @@ export function apply(ctx: any): void {
       const found = await resolveCodeArtsCredential(ctx)
       if (found) await codeArtsAuth.refreshAccountCredential(found.ref)
     },
+    // 设置页把某个模型标成「图片」后，DSH 会把图片块交给适配器；这里给出
+    // 持久化附件服务（web/headless 组合都有），缺失时适配器降级为占位文字。
+    resolveAttachments: () => ctx.get('attachments') as ImageAttachmentStore | undefined,
   })
 
   // 每日自动签到：上游 dsh-our-free-model 不再覆盖 codearts 渠道后，这条能力
@@ -277,6 +281,12 @@ export function apply(ctx: any): void {
       // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。
       loginDeps: {
         startLogin: () => codeArtsAuth.startLogin({ refName: primaryCredentialRef() }),
+      },
+      // 模型与图片能力：GET/POST /models。只存与目录不同的行（见
+      // src/model-settings.js），保存后下一次请求即生效，无需重启。
+      modelsDeps: {
+        getCatalog: () => codeArtsLlm.catalogRows(),
+        settingsPath: () => modelsSettingsPath(),
       },
     })
     scoped.effect(

@@ -63,6 +63,26 @@ window.__ModuleLoader__.load({
         loginTimeout: '登录超时（3 分钟），请重试。',
         loginHint: '刷新令牌是一次性的：失效后点这里重新授权即可，无需重装插件。',
         openLogin: '打开登录页',
+        modelsTitle: '模型与图片能力',
+        modelsHint: '华为云目录每 2 小时刷新一次：这里只保存你改过的行（与目录相同的行不落盘），目录更新会自动跟随。勾选「图片」的模型，DSH 才会把图片按 data URL 发给它；不勾的模型照旧只收文字。',
+        modelId: '模型 id',
+        modelName: '名称',
+        contextWindow: '上下文窗口',
+        maxOutput: '最大输出',
+        modalityText: '文字',
+        modalityImage: '图片',
+        addModel: '添加模型',
+        remove: '移除',
+        saveModels: '保存模型设置',
+        resetModels: '恢复目录默认',
+        saving: '保存中…',
+        modelsLoading: '正在读取模型目录…',
+        modelsSaved: '已保存；下一次请求即生效（无需重启）。',
+        modelsReset: '已恢复为目录默认。',
+        modelsLoadFailed: '模型目录读取失败',
+        modelInvalid: '至少要有一个模型，且每行的 id 不能为空。',
+        modelPath: '覆盖表文件',
+        imageRisk: '注意：CodeArts 端点历史上会拒绝非文本块。只有确实支持视觉的模型才勾「图片」，否则该模型的请求可能被上游回以空流；勾错随时取消并保存。',
       },
       en: {
         nav: 'Huawei CodeArts',
@@ -104,6 +124,26 @@ window.__ModuleLoader__.load({
         loginTimeout: 'Login timed out (3 minutes), please retry.',
         loginHint: 'The refresh token is single-use: re-authorize here when it expires.',
         openLogin: 'Open login page',
+        modelsTitle: 'Models & image capability',
+        modelsHint: 'The Huawei catalog refreshes every 2 hours; only edited rows are stored, so untouched rows follow upstream automatically. A model with “Image” ticked is the only kind DSH sends images to (as data URLs); the rest stay text-only.',
+        modelId: 'Model id',
+        modelName: 'Name',
+        contextWindow: 'Context window',
+        maxOutput: 'Max output',
+        modalityText: 'Text',
+        modalityImage: 'Image',
+        addModel: 'Add model',
+        remove: 'Remove',
+        saveModels: 'Save model settings',
+        resetModels: 'Restore catalog defaults',
+        saving: 'Saving…',
+        modelsLoading: 'Loading model catalog…',
+        modelsSaved: 'Saved; effective on the next request (no restart).',
+        modelsReset: 'Restored to catalog defaults.',
+        modelsLoadFailed: 'Could not load the model catalog',
+        modelInvalid: 'Keep at least one model and give every row a non-empty id.',
+        modelPath: 'Overrides file',
+        imageRisk: 'Note: the CodeArts endpoint historically rejected non-text blocks. Tick “Image” only for models that really are vision-capable, otherwise that model may answer with an empty stream; untick and save to revert.',
       },
     }
 
@@ -176,6 +216,78 @@ window.__ModuleLoader__.load({
         fontSize: '13px',
       },
       note: { margin: 0, color: 'var(--dsw-alias-label-secondary, #a8a8a8)', fontSize: '12px' },
+      // ── 模型与图片能力卡片 ──────────────────────────────────────────────
+      // 版面口径与 keypool 插件一致：行内控件顶部对齐（alignItems:start），
+      // 勾选框用 labelSpacer(14px) + checkTall(38px) 与输入框同高同底，
+      // 否则勾选框会吊在数字字段下方 30 多像素（2026-10-31 实测修复过同类问题）。
+      modelItem: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        padding: '9px 0',
+        borderTop: '1px solid var(--dsw-alias-border-l2, #3a3a3a)',
+      },
+      modelRow: {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr) auto',
+        gap: '8px',
+        alignItems: 'end',
+      },
+      modelRow2: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: '8px',
+        alignItems: 'end',
+      },
+      modelField: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '3px',
+        minWidth: 0,
+        fontSize: '11px',
+        color: 'var(--dsw-alias-label-secondary, #a8a8a8)',
+      },
+      labelSpacer: { display: 'block', height: '14px', lineHeight: '14px', fontSize: '11px' },
+      checkTall: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '7px',
+        minHeight: '38px',
+        fontSize: '12px',
+        color: 'var(--dsw-alias-label-secondary, #a8a8a8)',
+      },
+      input: {
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '8px 10px',
+        borderRadius: '8px',
+        border: '1px solid var(--dsw-alias-border-l2, #3a3a3a)',
+        background: 'var(--dsw-alias-bg-layer-1, #1a1a1a)',
+        color: 'var(--dsw-alias-label-primary, #e8e8e8)',
+        font: 'inherit',
+      },
+      danger: { color: 'var(--dsw-alias-state-error-primary, #ff6b6b)' },
+    }
+
+    /** 模型行的稳定身份：React key 绝不能取自可编辑的 model.id（会逐字符丢焦点）。 */
+    let modelSeq = 0
+    function nextModelUid() {
+      modelSeq += 1
+      return `codearts-model-${modelSeq}`
+    }
+
+    /** 把服务端返回的模型行折成 UI 行（补 uid + 归一化模态）。 */
+    function toModelRows(models) {
+      return (Array.isArray(models) ? models : []).map(model => ({
+        uid: nextModelUid(),
+        id: String(model?.id ?? ''),
+        name: String(model?.name ?? ''),
+        contextWindow: Number(model?.contextWindow) > 0 ? Number(model.contextWindow) : 0,
+        maxOutput: Number(model?.maxOutput) > 0 ? Number(model.maxOutput) : 0,
+        inputModalities: Array.isArray(model?.inputModalities) && model.inputModalities.includes('image')
+          ? ['text', 'image']
+          : ['text'],
+      }))
     }
 
     const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 })
@@ -200,6 +312,14 @@ window.__ModuleLoader__.load({
       const [loginBusy, setLoginBusy] = useState(false)
       const [loginMessage, setLoginMessage] = useState('')
       const [loginUrl, setLoginUrl] = useState('')
+      // 模型与图片能力（GET/POST /models）
+      const [models, setModels] = useState([])
+      const [modelsRemoved, setModelsRemoved] = useState([])
+      const [modelsPath, setModelsPath] = useState('')
+      const [modelsBusy, setModelsBusy] = useState(false)
+      const [modelsMessage, setModelsMessage] = useState('')
+      const [modelsError, setModelsError] = useState('')
+      const [modelsLoaded, setModelsLoaded] = useState(false)
 
       const load = async () => {
         setLoading(true)
@@ -221,7 +341,123 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         void load()
+        void loadModels()
       }, [])
+
+      const applyModelsPayload = payload => {
+        setModels(toModelRows(payload?.models))
+        setModelsRemoved(Array.isArray(payload?.removed) ? payload.removed : [])
+        setModelsPath(String(payload?.settingsPath ?? ''))
+        setModelsLoaded(true)
+      }
+
+      const loadModels = async () => {
+        setModelsError('')
+        try {
+          const response = await fetch(`${API}/models`, { headers: { accept: 'application/json' } })
+          const payload = await response.json().catch(() => null)
+          if (!response.ok || !payload?.ok) {
+            throw new Error(payload?.error?.message ?? `HTTP ${response.status}`)
+          }
+          applyModelsPayload(payload)
+        } catch (cause) {
+          setModelsError(String(cause?.message ?? cause))
+          setModelsLoaded(true)
+        }
+      }
+
+      const updateModel = (index, patch) => {
+        setModels(current => current.map((model, i) => (i === index ? { ...model, ...patch } : model)))
+      }
+
+      const toggleModelModality = (index, modality) => {
+        setModels(current => current.map((model, i) => {
+          if (i !== index) return model
+          const has = model.inputModalities.includes(modality)
+          const next = has
+            ? model.inputModalities.filter(entry => entry !== modality)
+            : [...model.inputModalities, modality]
+          return { ...model, inputModalities: next.includes('text') ? next : ['text', ...next] }
+        }))
+      }
+
+      const addModel = () => {
+        setModels(current => [...current, {
+          uid: nextModelUid(),
+          id: '',
+          name: '',
+          contextWindow: 0,
+          maxOutput: 0,
+          inputModalities: ['text'],
+        }])
+      }
+
+      const removeModel = index => {
+        setModels(current => {
+          const row = current[index]
+          if (row !== undefined && row.id !== '') {
+            // 目录行必须登记到 removed，否则下次 GET 又会长回来。
+            setModelsRemoved(previous => previous.includes(row.id) ? previous : [...previous, row.id])
+          }
+          return current.filter((_, i) => i !== index)
+        })
+      }
+
+      const saveModels = async () => {
+        setModelsBusy(true)
+        setModelsMessage('')
+        setModelsError('')
+        try {
+          const rows = models
+            .map(model => ({
+              id: String(model.id ?? '').trim(),
+              name: String(model.name ?? '').trim(),
+              ...(Number(model.contextWindow) > 0 ? { contextWindow: Number(model.contextWindow) } : {}),
+              ...(Number(model.maxOutput) > 0 ? { maxOutput: Number(model.maxOutput) } : {}),
+              inputModalities: Array.isArray(model.inputModalities) ? model.inputModalities : ['text'],
+            }))
+            .filter(model => model.id !== '')
+          if (rows.length === 0) throw new Error(t('modelInvalid'))
+          const response = await fetch(`${API}/models`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ models: rows, removed: modelsRemoved }),
+          })
+          const payload = await response.json().catch(() => null)
+          if (!response.ok || !payload?.ok) {
+            throw new Error(payload?.error?.message ?? `HTTP ${response.status}`)
+          }
+          applyModelsPayload(payload)
+          setModelsMessage(t('modelsSaved'))
+        } catch (cause) {
+          setModelsError(String(cause?.message ?? cause))
+        } finally {
+          setModelsBusy(false)
+        }
+      }
+
+      const resetModels = async () => {
+        setModelsBusy(true)
+        setModelsMessage('')
+        setModelsError('')
+        try {
+          const response = await fetch(`${API}/models`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ reset: true }),
+          })
+          const payload = await response.json().catch(() => null)
+          if (!response.ok || !payload?.ok) {
+            throw new Error(payload?.error?.message ?? `HTTP ${response.status}`)
+          }
+          applyModelsPayload(payload)
+          setModelsMessage(t('modelsReset'))
+        } catch (cause) {
+          setModelsError(String(cause?.message ?? cause))
+        } finally {
+          setModelsBusy(false)
+        }
+      }
 
       const watchLogin = async () => {
         for (let i = 0; i < 100; i += 1) {
@@ -388,6 +624,102 @@ window.__ModuleLoader__.load({
               )
             : null,
           h('p', { style: styles.note }, t('loginHint')),
+        ),
+
+        // ── 模型与图片能力 ─────────────────────────────────────────────────
+        h('div', { style: styles.card },
+          h('div', { style: styles.actions },
+            h('h3', { style: styles.sectionTitle }, t('modelsTitle')),
+            h('button', { type: 'button', style: styles.button, disabled: modelsBusy, onClick: () => void saveModels() },
+              modelsBusy ? t('saving') : t('saveModels')),
+            h('button', { type: 'button', style: styles.button, disabled: modelsBusy, onClick: () => void resetModels() },
+              t('resetModels')),
+          ),
+          h('p', { style: styles.note }, t('modelsHint')),
+          modelsError === '' ? null : h('p', { style: { ...styles.note, ...styles.err } }, `${t('modelsLoadFailed')}: ${modelsError}`),
+          modelsMessage === '' ? null : h('p', { style: { ...styles.note, ...styles.ok } }, modelsMessage),
+          modelsLoaded && models.length === 0
+            ? h('p', { style: styles.note }, t('modelsLoading'))
+            : models.map((model, index) => h('div', { key: model.uid, style: styles.modelItem },
+                h('div', { style: styles.modelRow },
+                  h('label', { style: styles.modelField },
+                    h('span', null, t('modelId')),
+                    h('input', {
+                      style: styles.input,
+                      value: model.id,
+                      placeholder: t('modelId'),
+                      onChange: event => updateModel(index, { id: event.target.value }),
+                    }),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', null, t('modelName')),
+                    h('input', {
+                      style: styles.input,
+                      value: model.name,
+                      placeholder: t('modelName'),
+                      onChange: event => updateModel(index, { name: event.target.value }),
+                    }),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', { style: styles.labelSpacer }, '\u00a0'),
+                    h('button', {
+                      type: 'button',
+                      style: { ...styles.button, ...styles.danger },
+                      disabled: modelsBusy,
+                      onClick: () => removeModel(index),
+                    }, t('remove')),
+                  ),
+                ),
+                h('div', { style: styles.modelRow2 },
+                  h('label', { style: styles.modelField },
+                    h('span', null, t('contextWindow')),
+                    h('input', {
+                      style: styles.input,
+                      type: 'number',
+                      min: 0,
+                      value: model.contextWindow === 0 ? '' : model.contextWindow,
+                      onChange: event => updateModel(index, { contextWindow: Number(event.target.value) }),
+                    }),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', null, t('maxOutput')),
+                    h('input', {
+                      style: styles.input,
+                      type: 'number',
+                      min: 0,
+                      value: model.maxOutput === 0 ? '' : model.maxOutput,
+                      onChange: event => updateModel(index, { maxOutput: Number(event.target.value) }),
+                    }),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', { style: styles.labelSpacer }, '\u00a0'),
+                    h('span', { style: styles.checkTall },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: model.inputModalities.includes('text'),
+                        onChange: () => toggleModelModality(index, 'text'),
+                      }),
+                      t('modalityText'),
+                    ),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', { style: styles.labelSpacer }, '\u00a0'),
+                    h('span', { style: styles.checkTall },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: model.inputModalities.includes('image'),
+                        onChange: () => toggleModelModality(index, 'image'),
+                      }),
+                      t('modalityImage'),
+                    ),
+                  ),
+                ),
+              )),
+          h('div', { style: styles.actions },
+            h('button', { type: 'button', style: styles.button, disabled: modelsBusy, onClick: addModel }, t('addModel')),
+          ),
+          h('p', { style: styles.note }, t('imageRisk')),
+          modelsPath === '' ? null : h('p', { style: styles.note }, `${t('modelPath')}: ${modelsPath}`),
         ),
       )
     }

@@ -10,8 +10,26 @@ import { AccountPool, providerCatalogVisible } from './account-pool.js'
 import { RemoteCatalogGate } from './remote-catalog-gate.js'
 import { settingsNamespaceFor } from './settings-compat.js'
 import { nextUtc8DayStartMs } from './model-queue.js'
-import { isCodeArtsBenefitModel } from './models.js'
+import {
+  isCodeArtsBenefitModel,
+  MODEL_REFRESH_INTERVAL_MS,
+  saveModelsCache,
+  setMemoryCache,
+} from './models.js'
 import { normalizeHarnessMessages } from './message-shape.js'
+import { userContentOf } from './image-projection.js'
+import {
+  applyModelSettings,
+  cachedModelSettings,
+} from './model-settings.js'
+
+/** 目录行：远端/静态表提供 id + name，已知窗口的再补 contextWindow。 */
+interface CatalogModel {
+  id: string
+  name: string
+  contextWindow?: number
+  maxOutput?: number
+}
 import { directFetch } from './direct-fetch.js'
 import { signRequestHuawei } from './sign.js'
 import { createBlankReasoningSuppressor, createReasoningLoopDetector, hasUsableToolName, isReasoningLoopGuardEnabled, isTruncatedArguments, normalizeToolArguments, readWithIdleTimeout, reasoningLoopFailure, resolveEmptyResponseReason, resolveToolPairing, stripCourseLeakFromHistoryContent, stripCourseLeakIfEnabled } from './sse.js'
@@ -83,6 +101,32 @@ export interface CodeArtsAdapterOptions {
   sessionId?: string
   /** 多账号池（用于限流时切换账号） */
   accountPool?: AccountPool
+  /**
+   * 持久化附件服务（`ctx.get('attachments')`）。设置页把某个模型标成
+   * 「图片」后，DSH 会把图片块发到这里；没有它时图片会被替换为占位文字，
+   * 而不是让整个请求失败。
+   */
+  resolveAttachments?: () => ImageAttachmentStore | undefined
+  /** 单张图片的请求体内联上限（字节），与 DSH 的图片预算同量级。 */
+  maxRequestImageBytes?: number
+}
+
+/** 只用到 DSH 附件服务的一个方法，便于测试替身。 */
+export interface ImageAttachmentStore {
+  readImageRequest?: (
+    attachment: unknown,
+    options: { width: number; height: number; maxBytes: number },
+    signal?: AbortSignal,
+  ) => Promise<{ mediaType: string; data: Uint8Array }>
+}
+
+/** 图片投影依赖。 */
+export interface ImageProjectionDeps {
+  attachments?: ImageAttachmentStore
+  signal?: AbortSignal
+  maxRequestImageBytes?: number
+  /** false 时保持旧行为：非文本块整体丢弃（文本模型不该收到图片）。 */
+  allowImages?: boolean
 }
 
 /**
@@ -109,13 +153,23 @@ function contentToText(content: unknown): string {
  * 校验要求 assistant 消息必须携带该字段，缺失会报 "Missing
  * `reasoning_content` field"）；工具结果（搭载在 harness 用户消息中）
  * 展开为独立的 `{role: 'tool'}` 消息，使模型能看到其调用的返回值。
- * 其余非文本块（图片）被丢弃，与端点接受的格式一致。
+ *
+ * ## 图片
+ *
+ * 过去这里**无条件丢弃**非文本块，因为端点拒绝非 `text` 块。设置页把某个模型
+ * 标成「图片」后（`inputModalities` 含 `image`），本轮改为把图片投影成 OpenAI
+ * 的 `image_url` data URL（`deps.allowImages === true`）；工具结果里内嵌的图片
+ * 无法挂在 `role:'tool'` 上，按 OpenAI 约定提升为紧随其后的独立 user 消息。
+ * 未标「图片」的模型行为逐字节不变（图片被丢弃，由 DSH 侧先投影成占位文字）。
  *
  * ⚠️ 入口先做 **DSH 0.1.7 消息形状归一化**（见 `message-shape.ts`）：0.1.7 把工具
  * 结果改为一等 `role:'tool'` 消息，若不归一化，下面的 `type === 'tool-result'`
  * 判据恒不命中 → 工具调用被 `resolveToolPairing` 整体剔除。
  */
-export function serializeMessages(messages: readonly { role: string; content: unknown }[]): Array<Record<string, unknown>> {
+export async function serializeMessages(
+  messages: readonly { role: string; content: unknown }[],
+  deps: ImageProjectionDeps = {},
+): Promise<Array<Record<string, unknown>>> {
   const normalized = normalizeHarnessMessages(messages)
   const wire: Array<Record<string, unknown>> = []
   // 剔除无法配对的工具调用/结果（详见 resolveToolPairing）：孤儿 tool_calls
@@ -170,16 +224,30 @@ export function serializeMessages(messages: readonly { role: string; content: un
     // 纯文本 user 消息（字符串 content）需原样传递：contentToText 处理
     // 字符串时直接返回，但这里不能用 `content`（非数组时为 []）——否则
     // 字符串 user 消息会被序列化成空串，模型看不到任务指令。
-    const text = contentToText(message.content)
-    if (text.trim().length > 0) wire.push({ role: 'user', content: text })
+    const userContent = await userContentOf(message.content, deps)
+    if (userContent.text.trim().length > 0 || userContent.images.length > 0) {
+      // 没有图片时保持旧的字符串形状（逐字节不变）；有图片才升成 parts 数组。
+      wire.push({
+        role: 'user',
+        content: userContent.images.length === 0
+          ? userContent.text
+          : [
+              ...(userContent.text.trim().length > 0 ? [{ type: 'text', text: userContent.text }] : []),
+              ...userContent.images,
+            ],
+      })
+    }
     for (const result of toolResults) {
       // 丢弃孤儿工具结果：没有对应 tool_call 其结果同样会让后端 400。
       if (!keepResultIds.has(String(result.toolCallId))) continue
+      const resultContent = await userContentOf(result.content, deps)
       wire.push({
         role: 'tool',
         tool_call_id: String(result.toolCallId),
-        content: contentToText(result.content) || '(no output)',
+        content: resultContent.text || '(no output)',
       })
+      // 工具结果内嵌的图片不能挂在 role:'tool' 上：提升为紧随其后的 user 消息。
+      if (resultContent.images.length > 0) wire.push({ role: 'user', content: resultContent.images })
     }
   }
   return wire
@@ -905,8 +973,11 @@ export class CodeArtsAdapter extends LlmAdapter {
     return { id, name: 'CodeArts Agent' }
   }
 
-  /** 动态模型缓存（首次 listModels 成功后填充）。 */
+  /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
   private remoteModels: Array<{ id: string; name: string }> | undefined
+
+  /** 最近一次**成功**取到远端目录的时刻（ms）：过了刷新窗口才允许再拉。 */
+  private remoteModelsAt = 0
 
   /**
    * 目录加载闸门：并发去重 + 失败冷却。
@@ -921,18 +992,44 @@ export class CodeArtsAdapter extends LlmAdapter {
   /**
    * 懒加载远端模型目录。resolveModel 可能先于 listModels 被调用
    * （如直接进入会话），此时同样触发远端拉取。
+   *
+   * ⚠ 缓存**有保质期**（{@link MODEL_REFRESH_INTERVAL_MS}，2 小时）：云端会
+   * 新增/下架模型（2026-10-31 新增 `deepseek-v4.1-flash-1017`），原实现
+   * 「成功即永久缓存」，于是模型列表会一直停在进程首屏那一版，只能靠重启更新。
    */
   private async ensureRemoteModels(): Promise<void> {
     const fetchRemote = this.options.fetchRemoteModels
-    if (this.remoteModels !== undefined || fetchRemote === undefined) return
+    if (fetchRemote === undefined) return
+    // 窗口内直接吃缓存：DSH 对每个 provider 调一次 listModels、再对每个模型
+    // 调一次 resolveModelInfo，不判窗口就会变成每模型一次网络请求。
+    if (this.remoteModels !== undefined && Date.now() - this.remoteModelsAt < MODEL_REFRESH_INTERVAL_MS) return
     await this.catalogGate.run(async () => {
       const models = await fetchRemote()
       // 空目录同样算「没拿到」：既不应落缓存（否则再也拉不回来），
       // 也不应立刻重试（否则每个模型都打一次空请求）。
       if (models.length === 0) return false
       this.remoteModels = models
+      this.remoteModelsAt = Date.now()
       return true
     })
+  }
+
+  /**
+   * 用外部拉到的目录覆盖内存与磁盘缓存。
+   *
+   * 调用方是 `src/index.ts` 的目录刷新调度器（进程常驻期间的定时刷新）与
+   * 设置页的按需刷新：`ensureRemoteModels()` 只在构建目录时按需拉，DSH 把
+   * provider 目录缓存住之后就不会再进这里，因此**必须有一个能从外部推**的入口，
+   * 否则「自动更新」只能等重启。
+   *
+   * 空数组不覆盖（与 `ensureRemoteModels` 的「空 = 没拿到」口径一致）。
+   */
+  setRemoteModels(models: readonly { id: string; name: string }[]): void {
+    if (models.length === 0) return
+    this.remoteModels = models.map((m) => ({ id: m.id, name: m.name }))
+    this.remoteModelsAt = Date.now()
+    setMemoryCache(this.remoteModels)
+    saveModelsCache(this.remoteModels)
   }
 
   /**
@@ -978,16 +1075,66 @@ export class CodeArtsAdapter extends LlmAdapter {
     const listed = disabled === undefined || disabled.size === 0
       ? visible
       : visible.filter((m) => !disabled.has(m.id))
-    return listed.map((m) => ({ provider: PROVIDER, id: m.id, name: m.name, inputModalities: ['text'] as const }))
+    // 设置页覆盖表（名称/上下文/最大输出/文字-图片）在**最后一刻**应用：
+    // 目录行不入库，只有与目录不同的行才落盘，所以上游刷新不会被覆盖。
+    const effective = applyModelSettings(this.catalogFrom(listed), cachedModelSettings())
+    return effective.map((m) => ({
+      provider: PROVIDER,
+      id: m.id,
+      name: m.name,
+      inputModalities: m.inputModalities,
+    }))
+  }
+
+  /**
+   * 目录原始行（未应用覆盖表），供设置页「模型与图片能力」做差异比较与展示。
+   *
+   * 两处与 `listModels` 有意不同：
+   * - 跳过 `providerCatalogVisible` 门控：未登录时也要能看到目录缓存，否则
+   *   刚装插件时用户没有可编辑的行；
+   * - **不套 `-VL-` 过滤**：视觉模型默认不进选择器（上游目录里的 VL 行历史上
+   *   不被 CodeArts Agent 使用），但设置页必须能看见它们，用户勾「图片」后
+   *   （覆盖表里多出一行）才会真正出现在模型选择器里。这是"设置图片"的关键：
+   *   不过滤掉，就永远没机会打开。
+   */
+  async catalogRows(): Promise<readonly CatalogModel[]> {
+    await this.ensureRemoteModels()
+    const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }))
+    return this.catalogFrom(source)
+  }
+
+  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口，形成目录行。 */
+  private catalogFrom(rows: readonly { id: string; name: string }[]): CatalogModel[] {
+    return rows.map((row) => {
+      const contextWindow = CONTEXT_WINDOWS.get(row.id)
+      return contextWindow === undefined
+        ? { id: row.id, name: row.name }
+        : { id: row.id, name: row.name, contextWindow }
+    })
+  }
+
+  /** 某个模型应用覆盖后的有效行；不在目录里时返回 undefined。 */
+  private effectiveModel(model: string): ReturnType<typeof applyModelSettings>[number] | undefined {
+    return applyModelSettings(
+      this.catalogFrom(this.listAllModels()),
+      cachedModelSettings(),
+    ).find((row) => row.id === model)
   }
 
   async resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo> {
     await this.ensureRemoteModels()
+    const override = this.effectiveModel(model)
     const remoteModel = this.remoteModels?.find((m) => m.id === model)
-    const name = remoteModel?.name ?? model
-    const contextWindow = CONTEXT_WINDOWS.get(model)
-    const resolved: LlmResolvedModelInfo = { provider, id: model, name }
+    const name = override?.name ?? remoteModel?.name ?? model
+    const contextWindow = override?.contextWindow ?? CONTEXT_WINDOWS.get(model)
+    const resolved: LlmResolvedModelInfo = {
+      provider,
+      id: model,
+      name,
+      inputModalities: override?.inputModalities ?? ['text'],
+    }
     if (contextWindow !== undefined) resolved.context = { contextWindow }
+    if (override?.maxOutput !== undefined) resolved.defaultMaxTokens = override.maxOutput
     // 思考开关（实测，2026-09-29）：本网关**唯一**真正生效的思考控制是
     // 顶层 `thinking.type`。`reasoning_effort`（含 low/high/none/minimal）与
     // 嵌套 `reasoning.effort` 都被服务端接受但**完全无效果**（判据为服务端
@@ -1009,7 +1156,9 @@ export class CodeArtsAdapter extends LlmAdapter {
     signal?: AbortSignal,
   ): Promise<{ model: LlmResolvedModelInfo; stream: (options: GenerateOptions) => AsyncIterable<StreamChunk> }> {
     return {
-      model: { ...await this.resolveModel(provider, model, signal), inputModalities: ['text'] as const },
+      // 不再硬编码 text：`resolveModel` 已经带上设置页配的文字/图片模态，
+      // DSH 据此决定把历史图片投影成占位文字还是发成图片块。
+      model: await this.resolveModel(provider, model, signal),
       stream: (options: GenerateOptions) => this.stream(options),
     }
   }
@@ -1039,7 +1188,16 @@ export class CodeArtsAdapter extends LlmAdapter {
       if (currentAccountId) reportLedgerAccount(PROVIDER, currentAccountId)
     }
 
-    const messages = serializeMessages(options.messages)
+    // 只有设置页把该模型标成「图片」时才把 image 块投影成 image_url；
+    // 其余模型保持旧行为（非文本块丢弃，DSH 那边本就会先把图投影成占位文字）。
+    const requestedModel = String(options.model ?? '')
+    const allowImages = (this.effectiveModel(requestedModel)?.inputModalities ?? ['text']).includes('image')
+    const messages = await serializeMessages(options.messages, {
+      attachments: this.options.resolveAttachments?.(),
+      signal: options.signal,
+      maxRequestImageBytes: this.options.maxRequestImageBytes,
+      allowImages,
+    })
     // harness 的 GenerateOptions.system 是独立的系统提示（如标题生成的
     // systemPrompt、agent 的 persona）。后端 chat/completions 只接受
     // messages 数组里的 system 角色，必须显式插入——否则模型看不到
