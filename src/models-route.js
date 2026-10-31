@@ -76,7 +76,8 @@ function snapshot(catalog, settings, settingsPath) {
 export function createModelsRoute(deps) {
   return async function handler(req, res) {
     const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname.replace(/\/+$/, '')
-    if (!pathname.endsWith('/models')) {
+    const isTest = pathname.endsWith('/models/test')
+    if (!isTest && !pathname.endsWith('/models')) {
       sendError(res, 404, 'not found', 'NOT_FOUND')
       return
     }
@@ -86,6 +87,34 @@ export function createModelsRoute(deps) {
     }
 
     const settingsPath = String(deps.settingsPath?.() ?? '')
+
+    // Settings-page "test" button: send one `hi` through the real adapter and
+    // report latency / reply / failure. Does not touch the overrides file.
+    if (isTest) {
+      try {
+        if (req.method !== 'POST') {
+          sendError(res, 405, 'method not allowed', 'METHOD_NOT_ALLOWED')
+          return
+        }
+        const contentType = String(req.headers?.['content-type'] ?? '').toLowerCase()
+        if (!contentType.startsWith('application/json')) {
+          throw new Error('content-type must be application/json')
+        }
+        if (typeof deps.testModel !== 'function') {
+          throw new Error('testModel is not wired')
+        }
+        const body = await readBody(req)
+        const model = typeof body.model === 'string' ? body.model.trim() : ''
+        if (model === '' || model.length > 200) {
+          throw new Error('model must be a non-empty string (<= 200 chars)')
+        }
+        sendJson(res, 200, await deps.testModel(model))
+      } catch (error) {
+        sendError(res, 400, error instanceof Error ? error.message : String(error))
+      }
+      return
+    }
+
     try {
       const catalog = await deps.getCatalog()
 

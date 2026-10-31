@@ -73,6 +73,11 @@ window.__ModuleLoader__.load({
         modalityImage: '图片',
         addModel: '添加模型',
         remove: '移除',
+        test: '测试',
+        testing: '发送 hi…',
+        testOk: '✓ 通',
+        testFailed: '✗ 失败',
+        testHint: '给这个模型发一条 hi，验证账号与模型是否真的可用。',
         saveModels: '保存模型设置',
         resetModels: '恢复目录默认',
         saving: '保存中…',
@@ -134,6 +139,11 @@ window.__ModuleLoader__.load({
         modalityImage: 'Image',
         addModel: 'Add model',
         remove: 'Remove',
+        test: 'Test',
+        testing: 'Sending hi…',
+        testOk: '✓ OK',
+        testFailed: '✗ Failed',
+        testHint: 'Send one "hi" to this model to verify the credential and model actually work.',
         saveModels: 'Save model settings',
         resetModels: 'Restore catalog defaults',
         saving: 'Saving…',
@@ -229,7 +239,7 @@ window.__ModuleLoader__.load({
       },
       modelRow: {
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr) auto',
+        gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto auto',
         gap: '8px',
         alignItems: 'end',
       },
@@ -267,6 +277,15 @@ window.__ModuleLoader__.load({
         font: 'inherit',
       },
       danger: { color: 'var(--dsw-alias-state-error-primary, #ff6b6b)' },
+      testResult: {
+        display: 'flex',
+        gap: '8px',
+        alignItems: 'baseline',
+        fontSize: '11px',
+        lineHeight: '1.5',
+        wordBreak: 'break-word',
+      },
+      testText: { color: 'var(--dsw-alias-label-secondary, #a8a8a8)' },
     }
 
     /** 模型行的稳定身份：React key 绝不能取自可编辑的 model.id（会逐字符丢焦点）。 */
@@ -316,6 +335,8 @@ window.__ModuleLoader__.load({
       const [models, setModels] = useState([])
       const [modelsRemoved, setModelsRemoved] = useState([])
       const [modelsPath, setModelsPath] = useState('')
+      // Per-model "test" results, keyed by row uid: { busy, ok, latencyMs, text, error }
+      const [tests, setTests] = useState({})
       const [modelsBusy, setModelsBusy] = useState(false)
       const [modelsMessage, setModelsMessage] = useState('')
       const [modelsError, setModelsError] = useState('')
@@ -401,6 +422,45 @@ window.__ModuleLoader__.load({
           }
           return current.filter((_, i) => i !== index)
         })
+      }
+
+      /** 「测试」按钮：给这一行的模型发一条 `hi`（POST /models/test）。 */
+      const runTest = async model => {
+        const uid = model.uid
+        setTests(current => ({ ...current, [uid]: { busy: true } }))
+        try {
+          const response = await fetch(`${API}/models/test`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ model: String(model.id ?? '').trim() }),
+          })
+          const payload = await response.json().catch(() => null)
+          if (!response.ok) throw new Error(payload?.error?.message ?? `HTTP ${response.status}`)
+          setTests(current => ({ ...current, [uid]: payload }))
+        } catch (cause) {
+          setTests(current => ({
+            ...current,
+            [uid]: { ok: false, error: { message: String(cause?.message ?? cause) } },
+          }))
+        }
+      }
+
+      /** Render the last test result for one model row. */
+      const testLine = model => {
+        const result = tests[model.uid]
+        if (result === undefined) return null
+        const ok = result.ok === true
+        const status = result.busy === true
+          ? t('testing')
+          : ok
+            ? `${t('testOk')} ${(Number(result.latencyMs) / 1000).toFixed(1)}s`
+            : `${t('testFailed')}${result.error?.code ? ` [${result.error.code}]` : ''}: ${result.error?.message ?? ''}`
+        return h('div', { style: styles.testResult },
+          h('span', { style: result.busy === true ? styles.testText : (ok ? styles.ok : styles.err) }, status),
+          ok && result.text
+            ? h('span', { style: styles.testText }, `“${String(result.text).trim().slice(0, 160)}”`)
+            : null,
+        )
       }
 
       const saveModels = async () => {
@@ -664,6 +724,16 @@ window.__ModuleLoader__.load({
                     h('span', { style: styles.labelSpacer }, '\u00a0'),
                     h('button', {
                       type: 'button',
+                      style: styles.button,
+                      disabled: modelsBusy || tests[model.uid]?.busy === true,
+                      title: t('testHint'),
+                      onClick: () => void runTest(model),
+                    }, tests[model.uid]?.busy === true ? t('testing') : t('test')),
+                  ),
+                  h('label', { style: styles.modelField },
+                    h('span', { style: styles.labelSpacer }, '\u00a0'),
+                    h('button', {
+                      type: 'button',
                       style: { ...styles.button, ...styles.danger },
                       disabled: modelsBusy,
                       onClick: () => removeModel(index),
@@ -714,6 +784,7 @@ window.__ModuleLoader__.load({
                     ),
                   ),
                 ),
+                testLine(model),
               )),
           h('div', { style: styles.actions },
             h('button', { type: 'button', style: styles.button, disabled: modelsBusy, onClick: addModel }, t('addModel')),

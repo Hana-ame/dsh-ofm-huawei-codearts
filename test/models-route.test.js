@@ -144,3 +144,43 @@ test('the shared admin prefix dispatches /models to this handler', async () => {
   assert.equal(response.body.ok, true)
   assert.deepEqual(response.body.models.map(m => m.id), ['glm-5.2', 'deepseek-v4.1-flash'])
 })
+
+test('POST /models/test runs a one-shot hi through the adapter', async () => {
+  const file = tempFile()
+  const handler = createModelsRoute({
+    getCatalog: async () => CATALOG,
+    settingsPath: () => file,
+    testModel: async model => ({ ok: true, model, latencyMs: 7, text: '你好' }),
+  })
+  const response = await invoke(handler, {
+    method: 'POST',
+    url: '/api/dsh-ofm-huawei-codearts/models/test',
+    body: { model: 'glm-5.2' },
+  })
+  assert.equal(response.status, 200)
+  assert.equal(response.body.ok, true)
+  assert.equal(response.body.text, '你好')
+  // 测试不得改动覆盖表
+  assert.equal(fs.existsSync(file), false)
+})
+
+test('POST /models/test validates the model id and stays loopback-only', async () => {
+  const file = tempFile()
+  const testModel = async model => ({ ok: true, model })
+  const handler = createModelsRoute({ getCatalog: async () => CATALOG, settingsPath: () => file, testModel })
+  const empty = await invoke(handler, {
+    method: 'POST',
+    url: '/api/dsh-ofm-huawei-codearts/models/test',
+    body: { model: '  ' },
+  })
+  assert.equal(empty.status, 400)
+  const remote = await invoke(handler, {
+    method: 'POST',
+    url: '/api/dsh-ofm-huawei-codearts/models/test',
+    body: { model: 'glm-5.2' },
+    address: '10.1.2.3',
+  })
+  assert.equal(remote.status, 403)
+  const get = await invoke(handler, { url: '/api/dsh-ofm-huawei-codearts/models/test' })
+  assert.equal(get.status, 405)
+})

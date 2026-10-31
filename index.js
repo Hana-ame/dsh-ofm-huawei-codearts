@@ -32765,7 +32765,8 @@ function snapshot(catalog, settings, settingsPath) {
 function createModelsRoute(deps) {
   return async function handler(req, res) {
     const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname.replace(/\/+$/, "");
-    if (!pathname.endsWith("/models")) {
+    const isTest = pathname.endsWith("/models/test");
+    if (!isTest && !pathname.endsWith("/models")) {
       sendError(res, 404, "not found", "NOT_FOUND");
       return;
     }
@@ -32774,6 +32775,30 @@ function createModelsRoute(deps) {
       return;
     }
     const settingsPath = String(deps.settingsPath?.() ?? "");
+    if (isTest) {
+      try {
+        if (req.method !== "POST") {
+          sendError(res, 405, "method not allowed", "METHOD_NOT_ALLOWED");
+          return;
+        }
+        const contentType = String(req.headers?.["content-type"] ?? "").toLowerCase();
+        if (!contentType.startsWith("application/json")) {
+          throw new Error("content-type must be application/json");
+        }
+        if (typeof deps.testModel !== "function") {
+          throw new Error("testModel is not wired");
+        }
+        const body = await readBody(req);
+        const model = typeof body.model === "string" ? body.model.trim() : "";
+        if (model === "" || model.length > 200) {
+          throw new Error("model must be a non-empty string (<= 200 chars)");
+        }
+        sendJson(res, 200, await deps.testModel(model));
+      } catch (error) {
+        sendError(res, 400, error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
     try {
       const catalog = await deps.getCatalog();
       if (req.method === "GET") {
@@ -33036,7 +33061,52 @@ function apply(ctx) {
           await refreshCatalogIfStale(MODEL_REFRESH_INTERVAL_MS);
           return codeArtsLlm.catalogRows();
         },
-        settingsPath: () => modelsSettingsPath()
+        settingsPath: () => modelsSettingsPath(),
+        // 设置页「测试」按钮：用适配器自己的 stream() 给该模型发一条 `hi`，
+        // 测的是真实链路（凭据刷新、签名、SSE、限流重试），凭据不出服务端。
+        testModel: async (model) => {
+          const started = Date.now();
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3e4);
+          const outcome = { ok: false, model, key: "", latencyMs: 0, text: "" };
+          try {
+            for await (const chunk of codeArtsLlm.stream({
+              provider: "codearts",
+              model,
+              messages: [{ role: "user", content: "hi" }],
+              maxTokens: 512,
+              signal: controller.signal
+            })) {
+              const typed = chunk;
+              if (typed.type === "text-delta") outcome.text += String(typed.text ?? "");
+              else if (typed.type === "reasoning-delta") outcome.reasoning = `${outcome.reasoning ?? ""}${String(typed.text ?? "")}`;
+              else if (typed.type === "usage") outcome.usage = typed.usage;
+              else if (typed.type === "finish") {
+                outcome.ok = typed.reason?.kind !== "error" && typed.reason?.kind !== "aborted";
+                if (!outcome.ok) {
+                  outcome.error = {
+                    code: String(typed.reason?.failure?.code ?? "UNKNOWN"),
+                    message: String(typed.reason?.failure?.message ?? "stream failed")
+                  };
+                }
+              }
+            }
+          } catch (error) {
+            outcome.ok = false;
+            outcome.error = {
+              code: String(error?.code ?? "TEST_FAILED"),
+              message: error instanceof Error ? error.message : String(error)
+            };
+          } finally {
+            clearTimeout(timer);
+          }
+          outcome.latencyMs = Date.now() - started;
+          if (outcome.ok && outcome.text.trim() === "") {
+            outcome.ok = false;
+            outcome.error = { code: "EMPTY", message: "\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u6587\u672C" };
+          }
+          return outcome;
+        }
       }
     });
     scoped.effect(

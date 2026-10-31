@@ -357,6 +357,65 @@ export function apply(ctx: any): void {
           return codeArtsLlm.catalogRows()
         },
         settingsPath: () => modelsSettingsPath(),
+        // 设置页「测试」按钮：用适配器自己的 stream() 给该模型发一条 `hi`，
+        // 测的是真实链路（凭据刷新、签名、SSE、限流重试），凭据不出服务端。
+        testModel: async (model: string) => {
+          const started = Date.now()
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), 30_000)
+          const outcome: {
+            ok: boolean
+            model: string
+            key: string
+            latencyMs: number
+            text: string
+            reasoning?: string
+            usage?: unknown
+            error?: { code: string; message: string }
+          } = { ok: false, model, key: '', latencyMs: 0, text: '' }
+          try {
+            for await (const chunk of codeArtsLlm.stream({
+              provider: 'codearts',
+              model,
+              messages: [{ role: 'user', content: 'hi' }],
+              maxTokens: 512,
+              signal: controller.signal,
+            } as never)) {
+              const typed = chunk as {
+                type?: string
+                text?: string
+                reason?: { kind?: string; failure?: { code?: string; message?: string } }
+                usage?: unknown
+              }
+              if (typed.type === 'text-delta') outcome.text += String(typed.text ?? '')
+              else if (typed.type === 'reasoning-delta') outcome.reasoning = `${outcome.reasoning ?? ''}${String(typed.text ?? '')}`
+              else if (typed.type === 'usage') outcome.usage = typed.usage
+              else if (typed.type === 'finish') {
+                outcome.ok = typed.reason?.kind !== 'error' && typed.reason?.kind !== 'aborted'
+                if (!outcome.ok) {
+                  outcome.error = {
+                    code: String(typed.reason?.failure?.code ?? 'UNKNOWN'),
+                    message: String(typed.reason?.failure?.message ?? 'stream failed'),
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            outcome.ok = false
+            outcome.error = {
+              code: String((error as { code?: unknown })?.code ?? 'TEST_FAILED'),
+              message: error instanceof Error ? error.message : String(error),
+            }
+          } finally {
+            clearTimeout(timer)
+          }
+          outcome.latencyMs = Date.now() - started
+          if (outcome.ok && outcome.text.trim() === '') {
+            outcome.ok = false
+            outcome.error = { code: 'EMPTY', message: '模型返回了空文本' }
+          }
+          return outcome
+        },
       },
     })
     scoped.effect(
