@@ -1398,6 +1398,12 @@ export class CodeArtsAdapter extends LlmAdapter {
         extraSignedHeaders,
       )
       const headers = new Headers(attributionHeaders())
+      // 华为 APIG 网关对非官方 User-Agent 返回 403 `TM.00000001 网络繁忙，请稍后重试`：
+      // attributionHeaders() 给的 `deepseek-harness/...` 会被网关拒（实测 403），
+      // 改用官方 CodeArts IDE 的 vscode-codebot UA。实证（同凭据同签名同模型）：
+      // UA=deepseek-harness → 403 TM.00000001；UA=vscode-codebot 或无 UA → 200。
+      // 这是 codearts 反复「API 密钥无效 / HTTP 403」的真凶，而非 ST 过期或签名错。
+      headers.set('user-agent', 'vscode-codebot/26.10.2')
       // 签名 map 中的额外头（如 maas_type）必须随请求发送——它们已参与
       // canonical 计算、包含在 SignedHeaders 列表中，缺失会导致服务端验签失败。
       signed.forEach((value, key) => { if (key !== 'content-type') headers.set(key, value) })

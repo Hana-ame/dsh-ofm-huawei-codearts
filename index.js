@@ -31553,6 +31553,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
         extraSignedHeaders
       );
       const headers = new Headers(attributionHeaders());
+      headers.set("user-agent", "vscode-codebot/26.10.2");
       signed.forEach((value, key) => {
         if (key !== "content-type") headers.set(key, value);
       });
