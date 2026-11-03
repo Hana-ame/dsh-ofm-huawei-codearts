@@ -31558,7 +31558,8 @@ var CodeArtsAdapter = class extends LlmAdapter {
       });
       headers.set("Content-Type", "application/json");
       for (const [key, value] of Object.entries(codeartsSessionHeaders(sessionHeaderId))) headers.set(key, value);
-      headers.set("lang", "en");
+      headers.set("Agent-Type", "INFERHUB_AGENT");
+      headers.set("X-Language", "en");
       response = await this.fetchImpl(url, {
         method: "POST",
         headers,

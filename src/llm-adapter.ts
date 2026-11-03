@@ -1403,7 +1403,13 @@ export class CodeArtsAdapter extends LlmAdapter {
       signed.forEach((value, key) => { if (key !== 'content-type') headers.set(key, value) })
       headers.set('Content-Type', 'application/json')
       for (const [key, value] of Object.entries(codeartsSessionHeaders(sessionHeaderId))) headers.set(key, value)
-      headers.set('lang', 'en')
+      // Agent-Type / X-Language 必须在签名后追加（不进 canonical request），否则
+      // 华为 APIG 网关返回 401 `APIG.0301 ... verify ak sk signature fail`，适配器
+      // 归类为 AUTH、GUI 显示「API 密钥无效」。chat 请求此前漏了这两个头（只有
+      // 下方 queryQueueStatus 的 GET 带了），与 queryQueueStatus 保持一致。
+      // 实证：带这两个头 → HTTP 200 出流；不带 → 401 APIG.0301。
+      headers.set('Agent-Type', 'INFERHUB_AGENT')
+      headers.set('X-Language', 'en')
 
       response = await this.fetchImpl(url, {
         method: 'POST',
