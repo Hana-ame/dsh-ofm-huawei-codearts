@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import {
   attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError,
-  isQuotaExceededError, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE,
+  isQuotaExceededError, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE, resolveRetryPolicy,
 } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
@@ -129,6 +129,15 @@ const CONTEXT_WINDOWS: ReadonlyMap<string, number> = new Map([
  * 逐字变成请求参数 `max_tokens`（不是展示字段）；要再往上抬必须先做受控实测。
  */
 const DEFAULT_MAX_OUTPUT_TOKENS = 131072
+
+/**
+ * SecurityToken 预刷新提前量：ST 在过期前这么久就视为「临期」，stream() 开头
+ * 会先 refresh 再发请求，避免签名用的是一把在传输途中会过期的 ST（华为云临时
+ * 凭证每 2h 过期一次；原先只在 `expires_at <= now`（已过期）才刷新，第一个撞上
+ * 过期点的请求会先吃一个 401/AUTH，再靠 stream() 内的 on-401 兜底——既慢又可能
+ * 把 AUTH 暴露给上层）。5min 缓冲对 2h 生命周期足够覆盖时钟偏差与网络往返。
+ */
+const ST_EXPIRY_REFRESH_BUFFER_MS = 5 * 60_000
 
 export interface CodeArtsAdapterOptions {
   credentialRef: CredentialRef
@@ -1013,6 +1022,28 @@ export class CodeArtsAdapter extends LlmAdapter {
     return { id, name: 'CodeArts Agent' }
   }
 
+  /**
+   * CodeArts 的鉴权失败（401/403 → AUTH）几乎都来自华为云临时
+   * SecurityToken（ST）过期，而非凭据本身畸形——refresh_token 仍有效时
+   * 这是一次性可自愈的瞬时故障。本适配器在 stream() 内已对 401/403 /
+   * APIG.0602 做一次静默 refresh + 重试（见 {@link isCredentialExpiredError}，
+   * 同一次调用最多刷新一次避免死循环）；仍抛 AUTH 时，把这一步交给
+   * harness 的重试策略再兜一次，故在 dsh-llm 默认可重试码集合
+   * （EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT）之上
+   * 额外加入 AUTH。其余参数（maxRetries=5、backoff 500→10000、jitter 0.1）
+   * 沿用 resolveRetryPolicy 的 normal 默认。INVALID_CREDENTIAL（凭据畸形）
+   * 走另一码、不在此列、不会被重试。
+   */
+  providerRetryPolicy(_provider: string) {
+    return resolveRetryPolicy(
+      {
+        mode: 'normal',
+        retryableCodes: ['EMPTY_RESPONSE', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'AUTH'],
+      },
+      'codearts: retryPolicy',
+    )
+  }
+
   /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
   private remoteModels: Array<{ id: string; name: string }> | undefined
 
@@ -1217,7 +1248,10 @@ export class CodeArtsAdapter extends LlmAdapter {
 
   async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     let credential = await this.options.resolveCredential()
-    if (credential === undefined || Date.parse(credential.expires_at) <= Date.now()) {
+    // 预刷新：ST 临期（剩余 < ST_EXPIRY_REFRESH_BUFFER_MS）或已过期或缺失时，
+    // 先 refresh 再取凭据，保证下面的签名用的是一把尚未过期、且不会在请求
+    // 往返途中过期的 ST。refresh 失败时回落到旧凭据，仍由后面的 on-401 兜底。
+    if (credential === undefined || Date.parse(credential.expires_at) <= Date.now() + ST_EXPIRY_REFRESH_BUFFER_MS) {
       await this.options.refresh()
       credential = await this.options.resolveCredential()
     }
