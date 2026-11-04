@@ -224,6 +224,30 @@ export function apply(ctx: any): void {
     void refreshCredentialByRef(ctx, codeArtsAuth, ref)
   }
 
+  // ── 周期性续期（2026-11-04 补）──────────────────────────────────────
+  // ST 每 2h 过期；此前只靠「撞过期才 reactive refresh」（stream() 内 on-APIG.0602），
+  // 一旦 refresh_token 已废（STS5.1806）就卡死、ST 续不上。加这条定时器主动续：
+  // 每 10 分钟调一次 refreshAccountCredential(ref)（**不带 force**）——其内部
+  // shouldRefreshNow（距过期 ≤ REFRESH_LEAD_MS=1h）把关，未到窗口只对账、**不
+  // 消耗 refresh_token**；进入 1h 窗口才真 refresh 并 credentials.set 写回新
+  // refresh_token（一次性轮换：服务端作废旧 token、发新的，必须持久化新值）。
+  // 这样 ST 到期前就被主动续上，refresh_token 在单进程内始终是最新一把。
+  // 失败只告警（不抛），下一轮再试；refresh_token 终态失效（isRefreshTokenExpired）
+  // 时 refreshAccountCredential 内部不再重试，靠重新登录恢复。
+  const PERIODIC_REFRESH_INTERVAL_MS = 10 * 60_000
+  const refreshTimer = setInterval(() => {
+    for (const ref of candidateCredentialRefs()) {
+      void codeArtsAuth.refreshAccountCredential(ref).catch((error) => {
+        ctx.logger?.warn?.(
+          `dsh-ofm-huawei-codearts: 周期续期失败（${ref}）: `
+          + `${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
+    }
+  }, PERIODIC_REFRESH_INTERVAL_MS)
+  refreshTimer.unref?.()
+  ctx.effect(() => () => clearInterval(refreshTimer), 'dsh-ofm-huawei-codearts: periodic ST refresh')
+
   const codeArtsLlm = registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。

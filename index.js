@@ -32985,6 +32985,18 @@ function apply(ctx) {
   for (const ref of candidateCredentialRefs()) {
     void refreshCredentialByRef(ctx, codeArtsAuth, ref);
   }
+  const PERIODIC_REFRESH_INTERVAL_MS = 10 * 6e4;
+  const refreshTimer = setInterval(() => {
+    for (const ref of candidateCredentialRefs()) {
+      void codeArtsAuth.refreshAccountCredential(ref).catch((error) => {
+        ctx.logger?.warn?.(
+          `dsh-ofm-huawei-codearts: \u5468\u671F\u7EED\u671F\u5931\u8D25\uFF08${ref}\uFF09: ${error instanceof Error ? error.message : String(error)}`
+        );
+      });
+    }
+  }, PERIODIC_REFRESH_INTERVAL_MS);
+  refreshTimer.unref?.();
+  ctx.effect(() => () => clearInterval(refreshTimer), "dsh-ofm-huawei-codearts: periodic ST refresh");
   const codeArtsLlm = registerCodeArtsLlm(ctx, {
     fetchImpl: transport.fetch,
     // 适配器契约要求一个默认 ref；实际解析走下面的 resolveCredential。
