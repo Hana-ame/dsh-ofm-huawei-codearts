@@ -29664,8 +29664,7 @@ import {
   isQuotaExceededError,
   LlmAdapter,
   LlmError as LlmError2,
-  QUOTA_EXCEEDED_CODE,
-  resolveRetryPolicy
+  QUOTA_EXCEEDED_CODE
 } from "@deepseek-ai/dsh-llm";
 import { ReasoningEffortId, ToolCallId } from "@deepseek-ai/dsh-llm";
 
@@ -30877,7 +30876,6 @@ var CONTEXT_WINDOWS = /* @__PURE__ */ new Map([
   ["kimi-k3.1-pro", 1048576]
 ]);
 var DEFAULT_MAX_OUTPUT_TOKENS = 131072;
-var ST_EXPIRY_REFRESH_BUFFER_MS = 5 * 6e4;
 function contentToText(content) {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
@@ -31019,6 +31017,7 @@ function isQueueError(status, body) {
   return status === 400 && (body.includes("TM.00001041") || /peak\s+usage|try\s+again\s+after|peak\s+hours/i.test(body) || /high\s+demand|too\s+many\s+requests/i.test(body));
 }
 function isAuthError(status, body) {
+  if (status === 401 || status === 403) return true;
   return body.includes("APIG.0602") || /invalid\s+token|token\s+expired|token\s+is\s+invalid/i.test(body);
 }
 function isSseQueueErrorCode(code) {
@@ -31289,27 +31288,6 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const id = typeof provider === "string" && provider.length > 0 ? provider : PROVIDER;
     return { id, name: "CodeArts Agent" };
   }
-  /**
-   * CodeArts 的鉴权失败（401/403 → AUTH）几乎都来自华为云临时
-   * SecurityToken（ST）过期，而非凭据本身畸形——refresh_token 仍有效时
-   * 这是一次性可自愈的瞬时故障。本适配器在 stream() 内已对 401/403 /
-   * APIG.0602 做一次静默 refresh + 重试（见 {@link isCredentialExpiredError}，
-   * 同一次调用最多刷新一次避免死循环）；仍抛 AUTH 时，把这一步交给
-   * harness 的重试策略再兜一次，故在 dsh-llm 默认可重试码集合
-   * （EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT）之上
-   * 额外加入 AUTH。其余参数（maxRetries=5、backoff 500→10000、jitter 0.1）
-   * 沿用 resolveRetryPolicy 的 normal 默认。INVALID_CREDENTIAL（凭据畸形）
-   * 走另一码、不在此列、不会被重试。
-   */
-  providerRetryPolicy(_provider) {
-    return resolveRetryPolicy(
-      {
-        mode: "normal",
-        retryableCodes: ["EMPTY_RESPONSE", "RATE_LIMIT", "SERVER", "TIMEOUT", "TRANSPORT", "AUTH"]
-      },
-      "codearts: retryPolicy"
-    );
-  }
   /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
   remoteModels;
   /** 最近一次**成功**取到远端目录的时刻（ms）：过了刷新窗口才允许再拉。 */
@@ -31453,7 +31431,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
   }
   async *stream(options) {
     let credential = await this.options.resolveCredential();
-    if (credential === void 0 || Date.parse(credential.expires_at) <= Date.now() + ST_EXPIRY_REFRESH_BUFFER_MS) {
+    if (credential === void 0 || Date.parse(credential.expires_at) <= Date.now()) {
       await this.options.refresh();
       credential = await this.options.resolveCredential();
     }
