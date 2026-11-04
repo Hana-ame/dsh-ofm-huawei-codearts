@@ -31019,7 +31019,6 @@ function isQueueError(status, body) {
   return status === 400 && (body.includes("TM.00001041") || /peak\s+usage|try\s+again\s+after|peak\s+hours/i.test(body) || /high\s+demand|too\s+many\s+requests/i.test(body));
 }
 function isAuthError(status, body) {
-  if (status === 401 || status === 403) return true;
   return body.includes("APIG.0602") || /invalid\s+token|token\s+expired|token\s+is\s+invalid/i.test(body);
 }
 function isSseQueueErrorCode(code) {

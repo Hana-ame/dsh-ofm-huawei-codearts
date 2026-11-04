@@ -551,13 +551,15 @@ function isQueueError(status: number, body: string): boolean {
  * 判断 HTTP 错误是否表示凭据已失效、可通过 refresh_token 续期后重试。
  * CodeArts 经华为 APIG 网关鉴权：SecurityToken 过期/无效时网关返回
  * `APIG.0602`（"Invalid token"），HTTP 状态通常是 401，但也观察到 403。
- * 本适配器在入口已按 expires_at 预判过期，但 SecurityToken 可能被后端
- * 提前吊销、或本地时钟与签发端有偏差——此时首次请求会命中本错误。
- * 策略：触发一次静默 refresh，用新 AK/SK/SecurityToken 重试一次；仍失败
- * 才抛 AUTH，避免把可自愈的瞬时鉴权失败暴露给用户。
+ *
+ * ⚠️ 只按 **body** 判定，不因裸 401/403 状态码就 refresh。403
+ * `TM.00000001`（User-Agent 被网关拒）和 401 `APIG.0301`（签名错）都不是
+ * ST 过期，refresh 修不好、只会空耗一次性 refresh_token（每次 refresh
+ * 服务端作废旧 token、发新的；UA 403 死循环曾一晚轮换 9+ 次把 token 烧成
+ * `STS5.1806 the refresh token has been used`）。真正的过期信号在 body：
+ * `APIG.0602` / invalid token / token expired。
  */
 function isAuthError(status: number, body: string): boolean {
-  if (status === 401 || status === 403) return true
   return body.includes('APIG.0602') || /invalid\s+token|token\s+expired|token\s+is\s+invalid/i.test(body)
 }
 
