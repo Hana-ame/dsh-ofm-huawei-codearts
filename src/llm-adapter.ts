@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import {
   attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError,
-  isQuotaExceededError, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE,
+  isQuotaExceededError, LlmAdapter, LlmError, QUOTA_EXCEEDED_CODE, resolveRetryPolicy,
 } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
@@ -1011,6 +1011,19 @@ export class CodeArtsAdapter extends LlmAdapter {
   providerInfo(provider: string): LlmProviderInfo {
     const id = typeof provider === 'string' && provider.length > 0 ? provider : PROVIDER
     return { id, name: 'CodeArts Agent' }
+  }
+
+  /** AUTH（401/403）加入可重试码：ST 过期等瞬时鉴权失败由 harness 重试兜底。
+   *  token refresh 不在这里做（只列 retry 名单）——续期交给定时刷新调度器，
+   *  避免与 stream() 内的 refresh 冲突反复轮换一次性 refresh_token。 */
+  providerRetryPolicy(_provider: string) {
+    return resolveRetryPolicy(
+      {
+        mode: 'normal',
+        retryableCodes: ['EMPTY_RESPONSE', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'AUTH'],
+      },
+      'codearts: retryPolicy',
+    )
   }
 
   /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
