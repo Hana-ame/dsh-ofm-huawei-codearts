@@ -35,6 +35,7 @@ import { createDirectFetch, attachDirectFetch } from './direct-fetch.js'
 import { signRequestHuawei } from './sign.js'
 import { isCredentialExpiredMessage } from './balance-route.js'
 import { createAdminRoute } from './admin-route.js'
+import { trackExpiring } from './quota-ledger.js'
 import { modelsSettingsPath } from './model-settings.js'
 import { fetchCodeArtsRemoteModels, MODEL_REFRESH_INTERVAL_MS } from './models.js'
 import {
@@ -366,6 +367,16 @@ export function apply(ctx: any): void {
         fetchBalance: (credential: CodeArtsCredential) =>
           fetchCodeArtsCreditBalance(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
         readCheckin: () => createFileAutoCheckinStore({ home: resolveAutoCheckinHome(ctx) }).load(),
+        // 到期明细：远端没有明细 API，只能本地观测 + 反解（见 src/quota-ledger.js）。
+        // 落盘位置可用 CODEARTS_QUOTA_FILE 覆盖；任何异常都在 ledger 内部吞掉，
+        // 最坏情况是 expiring=null（设置页显示「暂无」），不影响余额展示。
+        trackExpiring: async (balance: unknown, options: { limit?: number } = {}) =>
+          trackExpiring(balance, {
+            limit: options.limit,
+            file: process.env.CODEARTS_QUOTA_FILE !== undefined && String(process.env.CODEARTS_QUOTA_FILE).trim().length > 0
+              ? String(process.env.CODEARTS_QUOTA_FILE).trim()
+              : undefined,
+          }),
       },
       // refresh_token 是一次性的，失效后只能重新授权：设置页给一个按钮，
       // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。

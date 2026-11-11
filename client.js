@@ -53,6 +53,25 @@ window.__ModuleLoader__.load({
         updatedAt: '查询时间',
         cycle: '积分周期',
         cycleHint: '周期结束（end_date）后，未使用的积分预计失效。接口不提供逐笔到期日。',
+        // ── 即将过期明细（本地账本反解，远端无明细 API）──
+        expiringTitle: '即将过期的积分',
+        expiringHint: '华为接口只给「最早到期组的剩余」，不提供逐笔发放/到期明细。下表由本插件在本地记录读数并按官方扣减顺序反解得出；标「推算」的到期日不是接口字段。',
+        expiringHintShort: '按到期日排序，最近到期的在前',
+        expiringShowMore: '显示更多',
+        expiringDaysUnit: '天',
+        expiringEmpty: '暂无到期明细：本地还没有足够的历史读数。多刷新几次（每次查余额都会记一个点），明细会逐步出现。',
+        expiringFailed: '到期明细不可用',
+        expiringColGrant: '积分来源',
+        expiringColAmount: '获得',
+        expiringColUsed: '已用',
+        expiringColRemain: '剩余',
+        expiringColExpire: '截止日期',
+        expiringColDays: '剩余天数',
+        expiringTotal: '合计',
+        expiringPrecise: '精确',
+        expiringEstimated: '推算',
+        expiringHidden: '还有 {n} 笔未列出',
+        expiringExactHint: '「精确」= 官方 end_date 周期末清零；「推算」= 接口不提供逐笔到期日，按已知规则推算。',
         noCycle: '—',
         accountTitle: '账号凭据',
         relogin: '重新登录 CodeArts',
@@ -119,6 +138,24 @@ window.__ModuleLoader__.load({
         updatedAt: 'Queried at',
         cycle: 'Credit period',
         cycleHint: 'Unused credits are expected to expire when the period ends (end_date). The API exposes no per-grant expiry date.',
+        expiringTitle: 'Credits expiring soon',
+        expiringHint: 'The Huawei API only exposes the remaining amount of the earliest-expiring bucket — no per-grant or per-expiry detail. The rows below are reconstructed locally from recorded readings plus the official deduction order; dates marked “estimated” are not API fields.',
+        expiringHintShort: 'Sorted by expiry, soonest first',
+        expiringShowMore: 'Show more',
+        expiringDaysUnit: 'd',
+        expiringEmpty: 'No expiry detail yet: not enough local history. Refresh a few times (each balance query records one sample) and the rows will appear.',
+        expiringFailed: 'Expiry detail unavailable',
+        expiringColGrant: 'Source',
+        expiringColAmount: 'Granted',
+        expiringColUsed: 'Used',
+        expiringColRemain: 'Remaining',
+        expiringColExpire: 'Expires on',
+        expiringColDays: 'Days left',
+        expiringTotal: 'Total',
+        expiringPrecise: 'exact',
+        expiringEstimated: 'estimated',
+        expiringHidden: '{n} more not shown',
+        expiringExactHint: '“exact” = official end_date cycle reset; “estimated” = the API exposes no per-grant expiry date, so it is derived from known rules.',
         noCycle: '—',
         accountTitle: 'Account credential',
         relogin: 'Re-login CodeArts',
@@ -286,6 +323,59 @@ window.__ModuleLoader__.load({
         wordBreak: 'break-word',
       },
       testText: { color: 'var(--dsw-alias-label-secondary, #a8a8a8)' },
+      // ── 即将过期明细（列表式）────────────────────────────────────────
+      // 设置弹窗内容区只有 ~390px，六列表格在任何字号下都挤不下（实测两次
+      // 都被「截止日期」列裁切）。改成「每笔一张小卡」：主行 = 来源 + 剩余，
+      // 副行 = 获得 / 已用 / 截止日期。窄容器下自动换行，永不横向裁切。
+      expireList: { display: 'flex', flexDirection: 'column', gap: '6px' },
+      expireItem: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '3px',
+        padding: '8px 10px',
+        borderRadius: '10px',
+        border: '1px solid var(--dsw-alias-border-l2, #3a3a3a)',
+        background: 'var(--dsw-alias-bg-layer-1, #1a1a1a)',
+      },
+      expireHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' },
+      grantName: { fontSize: '12px', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      remainWrap: { display: 'flex', alignItems: 'baseline', gap: '5px', flexShrink: 0 },
+      remainMark: { fontSize: '15px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+      expireMeta: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '4px 12px',
+        fontSize: '11px',
+        color: 'var(--dsw-alias-label-secondary, #a8a8a8)',
+      },
+      metaNum: { color: 'var(--dsw-alias-label-primary, #c8c8c8)', fontVariantNumeric: 'tabular-nums' },
+      expireCell: { display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' },
+      expireTotal: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '4px 12px',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        marginTop: '2px',
+        paddingTop: '7px',
+        borderTop: '1px solid var(--dsw-alias-border-l2, #3a3a3a)',
+        fontSize: '11px',
+        color: 'var(--dsw-alias-label-secondary, #a8a8a8)',
+      },
+      totalNums: { fontVariantNumeric: 'tabular-nums' },
+      daysHint: { color: 'var(--dsw-alias-label-secondary, #a8a8a8)', fontSize: '10px', fontVariantNumeric: 'tabular-nums' },
+      tag: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0 5px',
+        borderRadius: '999px',
+        fontSize: '10px',
+        lineHeight: '15px',
+        border: '1px solid currentColor',
+        whiteSpace: 'nowrap',
+      },
+      tagOk: { color: '#5ad17a' },
+      tagWarn: { color: '#e0b34a' },
     }
 
     /** 模型行的稳定身份：React key 绝不能取自可编辑的 model.id（会逐字符丢焦点）。 */
@@ -316,6 +406,13 @@ window.__ModuleLoader__.load({
       return Number.isFinite(num) ? numberFormat.format(num) : '—'
     }
 
+    /** 距今天数（向上取整；0 = 今天到期）。用于明细表的「剩余天数」列。 */
+    function daysLeftOf(expireAtMs) {
+      const ms = Number(expireAtMs)
+      if (!Number.isFinite(ms) || ms <= 0) return 0
+      return Math.max(0, Math.ceil((ms - Date.now()) / 86400000))
+    }
+
     function timeText(ms, t) {
       const num = Number(ms)
       if (!Number.isFinite(num) || num <= 0) return '—'
@@ -328,6 +425,8 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('')
       const [loading, setLoading] = useState(true)
       const [queriedAt, setQueriedAt] = useState(0)
+      // 「即将过期」明细显示条数（点按钮 +5，到 20 回落到 5）。
+      const [expiringLimit, setExpiringLimit] = useState(5)
       const [loginBusy, setLoginBusy] = useState(false)
       const [loginMessage, setLoginMessage] = useState('')
       const [loginUrl, setLoginUrl] = useState('')
@@ -346,7 +445,7 @@ window.__ModuleLoader__.load({
         setLoading(true)
         setError('')
         try {
-          const response = await fetch(`${API}/balance`, { headers: { accept: 'application/json' } })
+          const response = await fetch(`${API}/balance?limit=${expiringLimit}`, { headers: { accept: 'application/json' } })
           const payload = await response.json().catch(() => null)
           if (!response.ok || !payload?.ok) {
             throw new Error(payload?.error?.message ?? `HTTP ${response.status}`)
@@ -642,6 +741,67 @@ window.__ModuleLoader__.load({
                       `${t('updatedAt')}: ${new Date(queriedAt).toLocaleString('zh-CN', { hour12: false })}`),
                   ),
         ),
+
+        // ── 即将过期的积分（最近 N 笔）────────────────────────────────
+        // 数据来自 /balance 的 expiring 字段（服务端本地账本反解，见
+        // src/quota-ledger.js）。接口本身没有明细，所以这一栏必须让用户
+        // 一眼看出哪些是「精确」、哪些是「推算」。
+        (() => {
+          const expiring = data?.expiring
+          const rows = Array.isArray(expiring?.rows) ? expiring.rows : []
+          const totals = expiring?.totals
+          const shownLimit = expiringLimit
+          return h('div', { style: styles.card },
+            h('div', { style: styles.actions },
+              h('h3', { style: styles.sectionTitle }, t('expiringTitle')),
+              h('span', { style: styles.note }, t('expiringHintShort')),
+              h('button', {
+                type: 'button',
+                style: styles.button,
+                onClick: () => { setExpiringLimit(prev => (prev >= 20 ? 5 : prev + 5)) },
+              }, `${t('expiringShowMore')} (${shownLimit})`),
+            ),
+            expiring === null || expiring === undefined
+              ? h('p', { style: styles.note }, t('expiringEmpty'))
+              : rows.length === 0
+                ? h('p', { style: styles.note }, t('expiringEmpty'))
+                : h('div', { style: styles.expireList },
+                    rows.map(row => h('div', { key: `${row.id}:${row.expireAt}`, style: styles.expireItem },
+                      // 第一行：来源 + 剩余（剩余是用户最关心的数字，放右侧放大）
+                      h('div', { style: styles.expireHead },
+                        h('span', { style: styles.grantName }, row.label || t('expiringColGrant')),
+                        h('span', { style: styles.remainWrap },
+                          h('span', { style: styles.remainMark }, credit(row.remain)),
+                          row.expireAt > 0
+                            ? h('span', { style: styles.daysHint },
+                                `${row.expireExact === true ? '' : '≈'}${daysLeftOf(row.expireAt)}${t('expiringDaysUnit')}`)
+                            : null,
+                        ),
+                      ),
+                      // 第二行：获得 / 已用 / 截止日期 + 精确性徽章
+                      h('div', { style: styles.expireMeta },
+                        h('span', null, `${t('expiringColAmount')} `, h('b', { style: styles.metaNum }, credit(row.amount))),
+                        h('span', null, `${t('expiringColUsed')} `, h('b', { style: styles.metaNum }, credit(row.used))),
+                        h('span', { style: styles.expireCell },
+                          h('span', null, `${t('expiringColExpire')} `, h('b', { style: styles.metaNum }, row.expireLabel || '—')),
+                          h('span', {
+                            style: { ...styles.tag, ...(row.expireExact === true ? styles.tagOk : styles.tagWarn) },
+                          }, row.expireExact === true ? t('expiringPrecise') : t('expiringEstimated')),
+                        ),
+                      ),
+                    )),
+                    totals === undefined ? null : h('div', { style: styles.expireTotal },
+                      h('span', null, t('expiringTotal'),
+                        totals.hidden > 0 ? ` · ${t('expiringHidden').replace('{n}', String(totals.hidden))}` : ''),
+                      h('span', { style: styles.totalNums },
+                        `${t('expiringColAmount')} ${credit(totals.amount)} · ${t('expiringColUsed')} ${credit(totals.used)} · ${t('expiringColRemain')} `,
+                        h('b', null, credit(totals.remain)),
+                      ),
+                    ),
+                  ),
+            h('p', { style: styles.note }, t('expiringExactHint')),
+          )
+        })(),
 
         h('div', { style: styles.card },
           h('div', { style: styles.actions },

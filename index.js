@@ -1143,14 +1143,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path5 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path6 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path5 && path5[0] !== "/") {
-          path5 = `/${path5}`;
+        if (path6 && path6[0] !== "/") {
+          path6 = `/${path6}`;
         }
-        return new URL(`${origin}${path5}`);
+        return new URL(`${origin}${path6}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -2021,9 +2021,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path5, origin }
+            request: { method, path: path6, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path5);
+          debugLog("sending request to %s %s%s", method, origin, path6);
         }
       );
     }
@@ -2041,14 +2041,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path5, origin },
+            request: { method, path: path6, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path5,
+            path6,
             statusCode
           );
         }
@@ -2057,23 +2057,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path5, origin }
+            request: { method, path: path6, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path5);
+          debugLog("trailers received from %s %s%s", method, origin, path6);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path5, origin },
+            request: { method, path: path6, origin },
             error
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path5,
+            path6,
             error.message
           );
         }
@@ -2228,7 +2228,7 @@ var require_request = __commonJS({
     };
     var Request2 = class {
       constructor(origin, {
-        path: path5,
+        path: path6,
         method,
         body,
         headers,
@@ -2245,11 +2245,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path5 !== "string") {
+        if (typeof path6 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path5[0] !== "/" && !(path5.startsWith("http://") || path5.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path6[0] !== "/" && !(path6.startsWith("http://") || path6.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path5)) {
+        } else if (invalidPathRegex.test(path6)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2324,7 +2324,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path5, query) : path5;
+        this.path = query ? serializePathWithQuery(path6, query) : path6;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" || method === "QUERY" : idempotent;
@@ -2521,11 +2521,11 @@ var require_request = __commonJS({
           } else if (typeof val[i] === "object") {
             throw new InvalidArgumentError(`invalid ${key} header`);
           } else {
-            const str = `${val[i]}`;
-            if (!isValidHeaderValue(str)) {
+            const str2 = `${val[i]}`;
+            if (!isValidHeaderValue(str2)) {
               throw new InvalidArgumentError(`invalid ${key} header`);
             }
-            arr.push(str);
+            arr.push(str2);
           }
         }
         val = arr;
@@ -3957,19 +3957,19 @@ var require_infra = __commonJS({
     function parseJSONFromBytes(bytes) {
       return JSON.parse(utf8DecodeBytes(bytes));
     }
-    function removeASCIIWhitespace(str, leading = true, trailing = true) {
-      return removeChars(str, leading, trailing, isASCIIWhitespace);
+    function removeASCIIWhitespace(str2, leading = true, trailing = true) {
+      return removeChars(str2, leading, trailing, isASCIIWhitespace);
     }
-    function removeChars(str, leading, trailing, predicate) {
+    function removeChars(str2, leading, trailing, predicate) {
       let lead = 0;
-      let trail = str.length - 1;
+      let trail = str2.length - 1;
       if (leading) {
-        while (lead < str.length && predicate(str.charCodeAt(lead))) lead++;
+        while (lead < str2.length && predicate(str2.charCodeAt(lead))) lead++;
       }
       if (trailing) {
-        while (trail > 0 && predicate(str.charCodeAt(trail))) trail--;
+        while (trail > 0 && predicate(str2.charCodeAt(trail))) trail--;
       }
-      return lead === 0 && trail === str.length - 1 ? str : str.slice(lead, trail + 1);
+      return lead === 0 && trail === str2.length - 1 ? str2 : str2.slice(lead, trail + 1);
     }
     function serializeJavascriptValueToJSONString(value) {
       const result = JSON.stringify(value);
@@ -4220,8 +4220,8 @@ var require_data_url = __commonJS({
     function isHTTPWhiteSpace(char) {
       return char === 13 || char === 10 || char === 9 || char === 32;
     }
-    function removeHTTPWhitespace(str, leading = true, trailing = true) {
-      return removeChars(str, leading, trailing, isHTTPWhiteSpace);
+    function removeHTTPWhitespace(str2, leading = true, trailing = true) {
+      return removeChars(str2, leading, trailing, isHTTPWhiteSpace);
     }
     function minimizeSupportedMimeType(mimeType) {
       switch (mimeType.essence) {
@@ -6287,7 +6287,7 @@ var require_body = __commonJS({
         const boundary = getFormDataBoundary(object);
         const prefix = `--${boundary}\r
 Content-Disposition: form-data`;
-        const formdataEscape = (str) => str.replace(/\n/g, "%0A").replace(/\r/g, "%0D").replace(/"/g, "%22");
+        const formdataEscape = (str2) => str2.replace(/\n/g, "%0A").replace(/\r/g, "%0D").replace(/"/g, "%22");
         const normalizeLinefeeds = (value) => value.replace(/\r?\n|\r/g, "\r\n");
         const blobParts = [];
         const rn = new Uint8Array([13, 10]);
@@ -7410,7 +7410,7 @@ var require_client_h1 = __commonJS({
       }
     }
     function writeH1(client, request) {
-      const { method, path: path5, host, upgrade, blocking, reset } = request;
+      const { method, path: path6, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util3.isFormDataLike(body)) {
@@ -7486,7 +7486,7 @@ var require_client_h1 = __commonJS({
         socket[kBlocking] = true;
       }
       setTypeOfService(socket, request);
-      let header = `${method} ${path5} HTTP/1.1\r
+      let header = `${method} ${path6} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -8567,7 +8567,7 @@ var require_client_h2 = __commonJS({
       const headersTimeout = request.headersTimeout ?? client[kHeadersTimeout];
       const bodyTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path5, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path6, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util3.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
         return false;
@@ -8630,7 +8630,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path5;
+          headers[HTTP2_HEADER_PATH] = path6;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8652,7 +8652,7 @@ var require_client_h2 = __commonJS({
         setupUpgradeStream(stream, state);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path5;
+      headers[HTTP2_HEADER_PATH] = path6;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       let body = state.body;
@@ -11322,10 +11322,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path5 = "/",
+          path: path6 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path5;
+        opts.path = origin + path6;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -13590,20 +13590,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path5) {
-      if (typeof path5 !== "string") {
-        return path5;
+    function safeUrl(path6) {
+      if (typeof path6 !== "string") {
+        return path6;
       }
-      const pathSegments = path5.split("?", 3);
+      const pathSegments = path6.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path5;
+        return path6;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path5, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path5);
+    function matchKey(mockDispatch2, { path: path6, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path6);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -13630,8 +13630,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path5, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path5)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path5), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path6, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path6)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path6), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -13670,22 +13670,22 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path5) {
-      if (typeof path5 !== "string") {
-        return path5;
+    function removeTrailingSlash(path6) {
+      if (typeof path6 !== "string") {
+        return path6;
       }
-      while (path5.endsWith("/")) {
-        path5 = path5.slice(0, -1);
+      while (path6.endsWith("/")) {
+        path6 = path6.slice(0, -1);
       }
-      if (path5.length === 0) {
-        path5 = "/";
+      if (path6.length === 0) {
+        path6 = "/";
       }
-      return path5;
+      return path6;
     }
     function buildKey(opts) {
-      const { path: path5, method, body, headers, query } = opts;
+      const { path: path6, method, body, headers, query } = opts;
       return {
-        path: path5,
+        path: path6,
         method,
         body,
         headers,
@@ -14556,10 +14556,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path5, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
+          ({ method, path: path6, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path5,
+            Path: path6,
             "Status code": statusCode,
             Persistent: persist2 ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -14641,9 +14641,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path5, searchParams] = dispatchOpts.path.split("?");
+          const [path6, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path5}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path6}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -15059,12 +15059,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path5 = filePath || this.#snapshotPath;
-        if (!path5) {
+        const path6 = filePath || this.#snapshotPath;
+        if (!path6) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path5), "utf8");
+          const data = await readFile(resolve(path6), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -15078,7 +15078,7 @@ var require_snapshot_recorder = __commonJS({
           if (error.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path5}`, { cause: error });
+            throw new UndiciError(`Failed to load snapshots from ${path6}`, { cause: error });
           }
         }
       }
@@ -15089,11 +15089,11 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path5 = filePath || this.#snapshotPath;
-        if (!path5) {
+        const path6 = filePath || this.#snapshotPath;
+        if (!path6) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path5);
+        const resolvedPath = resolve(path6);
         await mkdir(dirname(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot2]) => ({
           hash,
@@ -15730,15 +15730,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util3.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path5 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path5}`;
+        const path6 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path6}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, removeContentHeaders, this.opts.origin !== origin, this.stripHeadersOnRedirect, this.stripHeadersOnCrossOriginRedirect);
-        this.opts.path = path5;
+        this.opts.path = path6;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -17566,10 +17566,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store2, cacheKey, path5) {
+    function deleteCachedUri(store2, cacheKey, path6) {
       deleteCachedValue(store2, {
         ...cacheKey,
-        path: path5
+        path: path6
       });
       for (let i = 0; i < util3.safeHTTPMethods.length; i++) {
         const method = util3.safeHTTPMethods[i];
@@ -17577,7 +17577,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store2, {
             ...cacheKey,
             method,
-            path: path5
+            path: path6
           });
         }
       }
@@ -17588,9 +17588,9 @@ var require_cache_handler = __commonJS({
       }
       const values = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i = 0; i < values.length; i++) {
-        const path5 = getSameOriginPath(cacheKey, values[i]);
-        if (path5 !== void 0) {
-          deleteCachedUri(store2, cacheKey, path5);
+        const path6 = getSameOriginPath(cacheKey, values[i]);
+        if (path6 !== void 0) {
+          deleteCachedUri(store2, cacheKey, path6);
         }
       }
     }
@@ -22587,13 +22587,13 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path5 = url.pathname + url.search;
+        const path6 = url.pathname + url.search;
         const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
         return dispatchWithProtocolPreference(body);
         function dispatchWithProtocolPreference(body2, allowH2) {
           return new Promise((resolve, reject) => agent.dispatch(
             {
-              path: hasTrailingQuestionMark ? `${path5}?` : path5,
+              path: hasTrailingQuestionMark ? `${path6}?` : path6,
               origin: url.origin,
               method: request.method,
               body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body2,
@@ -23505,9 +23505,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path5) {
-      for (let i = 0; i < path5.length; ++i) {
-        const code = path5.charCodeAt(i);
+    function validateCookiePath(path6) {
+      for (let i = 0; i < path6.length; ++i) {
+        const code = path6.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude non-ascii and DEL
         code === 59) {
@@ -23843,9 +23843,9 @@ var require_cookies = __commonJS({
       webidl.argumentLengthCheck(arguments, 2, "setCookie");
       brandChecks(headers);
       cookie = webidl.converters.Cookie(cookie);
-      const str = stringify(cookie);
-      if (str) {
-        headers.append("set-cookie", str, true);
+      const str2 = stringify(cookie);
+      if (str2) {
+        headers.append("set-cookie", str2, true);
       }
     }
     webidl.converters.DeleteCookieAttributes = webidl.dictionaryConverter([
@@ -24355,8 +24355,8 @@ var require_util5 = __commonJS({
           return false;
         }
       }
-      const num = Number.parseInt(value, 10);
-      return num >= 8 && num <= 15;
+      const num2 = Number.parseInt(value, 10);
+      return num2 >= 8 && num2 <= 15;
     }
     function getURLRecord(url, baseURL) {
       let urlRecord;
@@ -26879,11 +26879,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path5 = opts.path;
+          let path6 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path5 = `/${path5}`;
+            path6 = `/${path6}`;
           }
-          url = new URL(util3.parseOrigin(url).origin + path5);
+          url = new URL(util3.parseOrigin(url).origin + path6);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -26993,9 +26993,9 @@ ${captureLines}` : capture.stack;
 });
 
 // src/index.ts
-import fs3 from "node:fs";
-import os2 from "node:os";
-import path4 from "node:path";
+import fs4 from "node:fs";
+import os3 from "node:os";
+import path5 from "node:path";
 import { credentialRef as credentialRef3 } from "@deepseek-ai/dsh-credentials";
 
 // src/direct-fetch.ts
@@ -28168,8 +28168,8 @@ var day = hour * 24;
 var week = day * 7;
 var year = day * 365.25;
 var REGEX = /^(\+|\-)? ?(\d+|\d+\.\d+) ?(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)(?: (ago|from now))?$/i;
-var secs_default = (str) => {
-  const matched = REGEX.exec(str);
+var secs_default = (str2) => {
+  const matched = REGEX.exec(str2);
   if (!matched || matched[4] && matched[1]) {
     throw new TypeError("Invalid time period format");
   }
@@ -29121,10 +29121,10 @@ function parseModelInfo(m, seen, normalizeVersionSuffix = true) {
   seen.add(id);
   return { id, name: name2 };
 }
-function extractJsonArray(text, path5) {
+function extractJsonArray(text, path6) {
   try {
     let value = JSON.parse(text);
-    for (const key of path5) {
+    for (const key of path6) {
       if (typeof value !== "object" || value === null) return void 0;
       value = value[key];
     }
@@ -29215,14 +29215,14 @@ function benefitCachePath() {
   return dir === void 0 ? void 0 : `${dir}/${CODEARTS_BENEFIT_CACHE_FILENAME}`;
 }
 function saveModelsCache(models) {
-  const path5 = modelsCachePath();
-  if (!path5) return;
-  const dir = path5.slice(0, path5.lastIndexOf("/"));
+  const path6 = modelsCachePath();
+  if (!path6) return;
+  const dir = path6.slice(0, path6.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path5 + ".tmp";
+    const tmp = path6 + ".tmp";
     writeFileSync(tmp, JSON.stringify(models), "utf-8");
-    renameSync(tmp, path5);
+    renameSync(tmp, path6);
   } catch {
   }
 }
@@ -29230,23 +29230,23 @@ function setMemoryCache(models) {
   memoryCache = models;
 }
 function saveBenefitCache(ids) {
-  const path5 = benefitCachePath();
-  if (!path5) return;
-  const dir = path5.slice(0, path5.lastIndexOf("/"));
+  const path6 = benefitCachePath();
+  if (!path6) return;
+  const dir = path6.slice(0, path6.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path5 + ".tmp";
+    const tmp = path6 + ".tmp";
     writeFileSync(tmp, JSON.stringify(ids), "utf-8");
-    renameSync(tmp, path5);
+    renameSync(tmp, path6);
   } catch {
   }
 }
 function loadBenefitCache() {
-  const path5 = benefitCachePath();
-  if (!path5) return void 0;
+  const path6 = benefitCachePath();
+  if (!path6) return void 0;
   try {
-    if (!existsSync(path5)) return void 0;
-    const text = readFileSync(path5, "utf-8");
+    if (!existsSync(path6)) return void 0;
+    const text = readFileSync(path6, "utf-8");
     const ids = JSON.parse(text);
     if (!Array.isArray(ids) || ids.length === 0) return void 0;
     return ids.filter((id) => typeof id === "string");
@@ -30454,8 +30454,8 @@ var MemoryDeadModelStore = class {
   }
 };
 var FileDeadModelStore = class {
-  constructor(path5, logger2) {
-    this.path = path5;
+  constructor(path6, logger2) {
+    this.path = path6;
     this.logger = logger2;
   }
   path;
@@ -32626,7 +32626,461 @@ function createAutoCheckin(deps) {
   };
 }
 
+// src/quota-ledger.js
+import fs3 from "node:fs";
+import os2 from "node:os";
+import path4 from "node:path";
+var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path4.join(os2.homedir(), ".dsh");
+var DEFAULT_QUOTA_FILE = path4.join(DSH_HOME_DIR2, "dsh-ofm-huawei-codearts", "quota-buckets.json");
+var QUOTA_BUCKETS_SCHEMA = "dsh-ofm-huawei-codearts/quota-buckets/v1";
+var MAX_SAMPLES = 400;
+var MAX_GRANTS = 200;
+var DEFAULT_EXPIRING_LIMIT = 5;
+var BEFORE_CYCLE_END_OFFSET_MS = 1;
+function quotaBucketsPath() {
+  const fromEnv = String(process.env.CODEARTS_QUOTA_FILE ?? "").trim();
+  return fromEnv.length > 0 ? fromEnv : DEFAULT_QUOTA_FILE;
+}
+var round2 = (value) => Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+function num(source, key) {
+  const value = source?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return void 0;
+}
+function str(source, key) {
+  const value = source?.[key];
+  return typeof value === "string" ? value : "";
+}
+function isoDateOf(ms) {
+  return new Date(ms + 8 * 60 * 60 * 1e3).toISOString().slice(0, 10);
+}
+function cycleEndMsOf(dateString) {
+  if (typeof dateString !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return 0;
+  const ms = Date.parse(`${dateString}T00:00:00+08:00`);
+  return Number.isFinite(ms) ? ms + 864e5 : 0;
+}
+function sampleOfBalance(balance, nowMs = Date.now()) {
+  const total = balance?.total;
+  const amount = num(total, "amount");
+  const used = num(total, "used");
+  const remain = num(total, "remain");
+  if (amount === void 0 || used === void 0 || remain === void 0) return void 0;
+  const basic = balance?.basic;
+  const bonus = balance?.bonus;
+  return {
+    at: nowMs,
+    amount: round2(amount),
+    used: round2(used),
+    remain: round2(remain),
+    expiring: round2(num(total, "expiring") ?? 0),
+    cycleStart: str(balance?.cycle, "startDate"),
+    cycleEnd: str(balance?.cycle, "endDate"),
+    basicAmount: round2(num(basic, "amount") ?? 0),
+    basicRemain: round2(num(basic, "remain") ?? 0),
+    bonusAmount: round2(num(bonus, "amount") ?? 0),
+    bonusRemain: round2(num(bonus, "remain") ?? 0)
+  };
+}
+function normalizeSample(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return void 0;
+  const at = num(raw, "at");
+  const amount = num(raw, "amount");
+  const used = num(raw, "used");
+  const remain = num(raw, "remain");
+  if (at === void 0 || at <= 0) return void 0;
+  if (amount === void 0 || used === void 0 || remain === void 0) return void 0;
+  return {
+    at,
+    amount: round2(amount),
+    used: round2(used),
+    remain: round2(remain),
+    expiring: round2(num(raw, "expiring") ?? 0),
+    cycleStart: str(raw, "cycleStart"),
+    cycleEnd: str(raw, "cycleEnd"),
+    basicAmount: round2(num(raw, "basicAmount") ?? 0),
+    basicRemain: round2(num(raw, "basicRemain") ?? 0),
+    bonusAmount: round2(num(raw, "bonusAmount") ?? 0),
+    bonusRemain: round2(num(raw, "bonusRemain") ?? 0)
+  };
+}
+var GRANT_KINDS = Object.freeze({
+  /** 周期期初的席位积分（basic metric）。 */
+  CYCLE_BASE: "cycle-base",
+  /** 周期期初的赠送/活动积分（bonus metric）。 */
+  CYCLE_BONUS: "cycle-bonus",
+  /** 期内 amount 增加（另购积分包等）。 */
+  IN_CYCLE: "in-cycle",
+  /** 期内 expiring 增加（签到/活动，有效期短于周期末）。 */
+  EARLY: "early",
+  /** 账本无历史时按当前读数构造的兜底存量。 */
+  SYNTHETIC: "synthetic"
+});
+function normalizeGrant(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return void 0;
+  const amount = num(raw, "amount");
+  const at = num(raw, "at");
+  if (amount === void 0 || amount <= 0) return void 0;
+  if (at === void 0 || at <= 0) return void 0;
+  const kind = Object.values(GRANT_KINDS).includes(str(raw, "kind")) ? str(raw, "kind") : GRANT_KINDS.SYNTHETIC;
+  const expireAt = num(raw, "expireAt") ?? 0;
+  const expireSource = str(raw, "expireSource");
+  return {
+    id: str(raw, "id") || `${kind}:${at}:${round2(amount).toFixed(2)}`,
+    at,
+    amount: round2(amount),
+    kind,
+    cycleStart: str(raw, "cycleStart"),
+    cycleEnd: str(raw, "cycleEnd"),
+    expireAt: expireAt > 0 ? expireAt : 0,
+    // `exact` = 官方 end_date；`before-cycle-end` = 只知道早于周期末；
+    // `unknown` = 连界都没有（极少见）。
+    expireSource: ["exact", "before-cycle-end", "unknown"].includes(expireSource) ? expireSource : "unknown",
+    label: str(raw, "label"),
+    // 同一到期日内的扣减顺序：0=早到期组，1=福利/赠送，2=席位套餐，3=其他。
+    // 官方规则「有效期相同时先扣福利积分，再扣席位套餐」。
+    priority: Number.isFinite(num(raw, "priority")) ? num(raw, "priority") : 3
+  };
+}
+function emptyQuotaBook() {
+  return { schema: QUOTA_BUCKETS_SCHEMA, samples: [], grants: [], updatedAt: "" };
+}
+function sanitizeQuotaBook(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return emptyQuotaBook();
+  const samples = [];
+  for (const item of Array.isArray(raw.samples) ? raw.samples : []) {
+    const normalized = normalizeSample(item);
+    if (normalized !== void 0) samples.push(normalized);
+    if (samples.length >= MAX_SAMPLES) break;
+  }
+  const grants = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item of Array.isArray(raw.grants) ? raw.grants : []) {
+    const normalized = normalizeGrant(item);
+    if (normalized === void 0 || seen.has(normalized.id)) continue;
+    seen.add(normalized.id);
+    grants.push(normalized);
+    if (grants.length >= MAX_GRANTS) break;
+  }
+  return {
+    schema: QUOTA_BUCKETS_SCHEMA,
+    samples,
+    grants,
+    updatedAt: str(raw, "updatedAt")
+  };
+}
+function deriveGrants(previous, current) {
+  if (current === void 0) return [];
+  const grants = [];
+  const cycleEndAt = cycleEndMsOf(current.cycleEnd);
+  const cycleKey = `${current.cycleStart}~${current.cycleEnd}`;
+  const cycleChanged = previous === void 0 || previous.cycleStart !== current.cycleStart || previous.cycleEnd !== current.cycleEnd;
+  if (cycleChanged) {
+    const earlyInitial = round2(Math.min(current.amount, Math.max(0, current.used + current.expiring)));
+    const hasSecondBucket = earlyInitial < current.amount - 0.01;
+    const earlyExpireAt = earlyInitial <= 0 ? 0 : hasSecondBucket ? cycleEndAt > 0 ? cycleEndAt - BEFORE_CYCLE_END_OFFSET_MS : 0 : cycleEndAt;
+    const earlySource = earlyInitial <= 0 ? "unknown" : hasSecondBucket ? "before-cycle-end" : "exact";
+    if (earlyInitial > 0) {
+      grants.push({
+        id: `early:${cycleKey}`,
+        at: current.at,
+        amount: earlyInitial,
+        kind: GRANT_KINDS.EARLY,
+        cycleStart: current.cycleStart,
+        cycleEnd: current.cycleEnd,
+        expireAt: earlyExpireAt,
+        expireSource: earlySource,
+        label: "\u5373\u5C06\u5230\u671F\u79EF\u5206",
+        priority: 0
+      });
+    }
+    const rest = round2(current.amount - earlyInitial);
+    if (rest > 0) {
+      const base = round2(Math.min(rest, Math.max(0, current.basicAmount)));
+      const bonus = round2(rest - base);
+      if (bonus > 0) {
+        grants.push({
+          id: `bonus:${cycleKey}`,
+          at: current.at,
+          amount: bonus,
+          kind: GRANT_KINDS.CYCLE_BONUS,
+          cycleStart: current.cycleStart,
+          cycleEnd: current.cycleEnd,
+          expireAt: cycleEndAt,
+          expireSource: cycleEndAt > 0 ? "exact" : "unknown",
+          label: "\u8D60\u9001/\u6D3B\u52A8\u79EF\u5206",
+          priority: 1
+        });
+      }
+      if (base > 0) {
+        grants.push({
+          id: `base:${cycleKey}`,
+          at: current.at,
+          amount: base,
+          kind: GRANT_KINDS.CYCLE_BASE,
+          cycleStart: current.cycleStart,
+          cycleEnd: current.cycleEnd,
+          expireAt: cycleEndAt,
+          expireSource: cycleEndAt > 0 ? "exact" : "unknown",
+          label: "\u5E2D\u4F4D\u5957\u9910\u79EF\u5206",
+          priority: 2
+        });
+      }
+    }
+    return grants;
+  }
+  const amountDelta = round2(current.amount - (previous?.amount ?? 0));
+  const earlyDelta = round2(current.expiring - (previous?.expiring ?? 0));
+  if (amountDelta > 5e-3) {
+    const toEarly = round2(Math.min(amountDelta, Math.max(0, earlyDelta)));
+    if (toEarly > 5e-3) {
+      grants.push({
+        id: `early:${current.at}:${toEarly.toFixed(2)}`,
+        at: current.at,
+        amount: toEarly,
+        kind: GRANT_KINDS.EARLY,
+        cycleStart: current.cycleStart,
+        cycleEnd: current.cycleEnd,
+        // 排序占位：比周期末略早；UI 显示「早于 <end_date>」而非这个毫秒值。
+        expireAt: cycleEndAt > 0 ? cycleEndAt - BEFORE_CYCLE_END_OFFSET_MS : 0,
+        expireSource: cycleEndAt > 0 ? "before-cycle-end" : "unknown",
+        label: "\u7B7E\u5230/\u6D3B\u52A8\u79EF\u5206",
+        priority: 0
+      });
+    }
+    const toCycleEnd = round2(amountDelta - toEarly);
+    if (toCycleEnd > 5e-3) {
+      grants.push({
+        id: `in:${current.at}:${toCycleEnd.toFixed(2)}`,
+        at: current.at,
+        amount: toCycleEnd,
+        kind: GRANT_KINDS.IN_CYCLE,
+        cycleStart: current.cycleStart,
+        cycleEnd: current.cycleEnd,
+        expireAt: cycleEndAt,
+        expireSource: cycleEndAt > 0 ? "exact" : "unknown",
+        label: "\u671F\u5185\u589E\u53D1",
+        priority: 2
+      });
+    }
+  } else if (earlyDelta > 5e-3) {
+    grants.push({
+      id: `early-move:${current.at}:${earlyDelta.toFixed(2)}`,
+      at: current.at,
+      amount: earlyDelta,
+      kind: GRANT_KINDS.EARLY,
+      cycleStart: current.cycleStart,
+      cycleEnd: current.cycleEnd,
+      expireAt: cycleEndAt > 0 ? cycleEndAt - BEFORE_CYCLE_END_OFFSET_MS : 0,
+      expireSource: cycleEndAt > 0 ? "before-cycle-end" : "unknown",
+      label: "\u8F6C\u5165\u65E9\u5230\u671F\u7EC4",
+      priority: 0
+    });
+  }
+  return grants;
+}
+function writeOffExpired(grants, previous, current) {
+  if (current === void 0 || previous === void 0) return grants;
+  if (previous.cycleStart !== current.cycleStart || previous.cycleEnd !== current.cycleEnd) return grants;
+  const remainDrop = round2(previous.remain - current.remain);
+  const usedGain = round2(current.used - previous.used);
+  const writeOff = round2(remainDrop - usedGain);
+  if (writeOff <= 5e-3) return grants;
+  const cycleKey = `${current.cycleStart}~${current.cycleEnd}`;
+  let remaining = writeOff;
+  const next = [];
+  const cycle = grants.filter((grant) => grant.cycleStart === current.cycleStart && grant.cycleEnd === current.cycleEnd).sort((a, b) => (a.expireAt || Number.MAX_SAFE_INTEGER) - (b.expireAt || Number.MAX_SAFE_INTEGER));
+  const touched = /* @__PURE__ */ new Set();
+  for (const grant of cycle) {
+    if (remaining <= 5e-3) break;
+    const cut = Math.min(grant.amount, remaining);
+    remaining = round2(remaining - cut);
+    touched.add(grant.id);
+    next.push({ ...grant, amount: round2(grant.amount - cut) });
+  }
+  const untouched = grants.filter((grant) => !touched.has(grant.id));
+  return [...untouched, ...next.filter((grant) => grant.amount > 5e-3)];
+}
+function enforceInvariants(grants, sample) {
+  if (sample === void 0) return grants;
+  const inCycle = (grant) => grant.cycleStart === sample.cycleStart && grant.cycleEnd === sample.cycleEnd;
+  const isEarly = (grant) => grant.expireSource === "before-cycle-end";
+  const others = grants.filter((grant) => !inCycle(grant));
+  const cycle = grants.filter(inCycle);
+  const earlyTarget = round2(Math.min(sample.amount, Math.max(0, sample.used + sample.expiring)));
+  const cycleEndTarget = round2(sample.amount - earlyTarget);
+  const early = cycle.filter(isEarly);
+  const cycleEnd = cycle.filter((grant) => !isEarly(grant));
+  const adjust = (list, target, prototype) => {
+    let sum = round2(list.reduce((acc, grant) => acc + grant.amount, 0));
+    let out = [...list];
+    if (sum > target + 5e-3) {
+      let excess = round2(sum - target);
+      out = [...out].sort((a, b) => b.at - a.at);
+      const kept = [];
+      for (const grant of out) {
+        if (excess <= 5e-3) {
+          kept.push(grant);
+          continue;
+        }
+        const cut = Math.min(grant.amount, excess);
+        excess = round2(excess - cut);
+        const left = round2(grant.amount - cut);
+        if (left > 5e-3) kept.push({ ...grant, amount: left });
+      }
+      out = kept.sort((a, b) => a.at - b.at);
+    } else if (sum < target - 5e-3) {
+      out.push({
+        ...prototype,
+        id: `${prototype.id}:fill:${round2(target - sum).toFixed(2)}`,
+        amount: round2(target - sum)
+      });
+    }
+    return out;
+  };
+  const cycleEndAt = cycleEndMsOf(sample.cycleEnd);
+  const earlyFixed = adjust(early, earlyTarget, {
+    at: sample.at,
+    kind: GRANT_KINDS.SYNTHETIC,
+    cycleStart: sample.cycleStart,
+    cycleEnd: sample.cycleEnd,
+    expireAt: cycleEndAt > 0 ? cycleEndAt - BEFORE_CYCLE_END_OFFSET_MS : 0,
+    expireSource: cycleEndAt > 0 ? "before-cycle-end" : "unknown",
+    label: "\u672A\u89C2\u6D4B\u5230\u7684\u65E9\u5230\u671F\u79EF\u5206",
+    priority: 0
+  });
+  const cycleEndFixed = adjust(cycleEnd, cycleEndTarget, {
+    at: sample.at,
+    kind: GRANT_KINDS.SYNTHETIC,
+    cycleStart: sample.cycleStart,
+    cycleEnd: sample.cycleEnd,
+    expireAt: cycleEndAt,
+    expireSource: cycleEndAt > 0 ? "exact" : "unknown",
+    label: "\u672A\u89C2\u6D4B\u5230\u7684\u5468\u671F\u79EF\u5206",
+    priority: 2
+  });
+  let next = [...others, ...earlyFixed, ...cycleEndFixed];
+  while (next.length > MAX_GRANTS) {
+    const candidates = next.filter((grant) => !inCycle(grant));
+    if (candidates.length === 0) break;
+    const oldest = candidates.reduce((min, grant) => grant.at < min.at ? grant : min, candidates[0]);
+    next = next.filter((grant) => grant !== oldest);
+  }
+  return next;
+}
+function appendSample(samples, sample) {
+  const dayKey = isoDateOf(sample.at);
+  const next = samples.filter((existing) => isoDateOf(existing.at) !== dayKey);
+  next.push(sample);
+  next.sort((a, b) => a.at - b.at);
+  while (next.length > MAX_SAMPLES) next.shift();
+  return next;
+}
+function recordObservation(book, sample) {
+  if (sample === void 0) return book;
+  const last = book.samples.length > 0 ? book.samples[book.samples.length - 1] : void 0;
+  const samples = appendSample(book.samples, sample);
+  const previous = last !== void 0 && last.at <= sample.at ? last : void 0;
+  let grants = [...book.grants, ...deriveGrants(previous, sample)];
+  grants = writeOffExpired(grants, previous, sample);
+  grants = enforceInvariants(grants, sample);
+  return {
+    schema: QUOTA_BUCKETS_SCHEMA,
+    samples,
+    grants,
+    updatedAt: new Date(sample.at).toISOString()
+  };
+}
+function allocateUsed(grants, sample) {
+  if (sample === void 0) return [];
+  const cycle = grants.filter((grant) => grant.cycleStart === sample.cycleStart && grant.cycleEnd === sample.cycleEnd).sort((a, b) => {
+    if (a.expireAt === 0 || b.expireAt === 0) {
+      if (a.expireAt === b.expireAt) return (a.priority ?? 3) - (b.priority ?? 3);
+      return a.expireAt === 0 ? 1 : -1;
+    }
+    if (a.expireAt !== b.expireAt) return a.expireAt - b.expireAt;
+    const byPriority = (a.priority ?? 3) - (b.priority ?? 3);
+    return byPriority !== 0 ? byPriority : a.at - b.at;
+  });
+  let remainingUsed = Math.max(0, sample.used);
+  const rows = [];
+  for (const grant of cycle) {
+    const consumed = Math.min(grant.amount, remainingUsed);
+    remainingUsed = round2(remainingUsed - consumed);
+    const remain = round2(grant.amount - consumed);
+    rows.push({
+      ...grant,
+      used: round2(consumed),
+      remain,
+      expireDate: grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "",
+      expireExact: grant.expireSource === "exact",
+      expireLabel: grant.expireSource === "exact" ? grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "\u2014" : grant.expireSource === "before-cycle-end" ? `< ${sample.cycleEnd || "?"}` : "\u2014"
+    });
+  }
+  return rows;
+}
+function projectExpiring(book, { limit = DEFAULT_EXPIRING_LIMIT, nowMs = Date.now() } = {}) {
+  const last = book.samples.length > 0 ? book.samples[book.samples.length - 1] : void 0;
+  if (last === void 0) return { cycle: void 0, rows: [], totals: void 0 };
+  const all = allocateUsed(book.grants, last);
+  const live = all.filter((row) => row.remain > 5e-3);
+  const capped = Math.max(1, Math.min(Number(limit) || DEFAULT_EXPIRING_LIMIT, 20));
+  const visible = live.slice(0, capped);
+  return {
+    cycle: { startDate: last.cycleStart, endDate: last.cycleEnd },
+    rows: visible,
+    totals: {
+      amount: round2(all.reduce((sum, row) => sum + row.amount, 0)),
+      used: round2(all.reduce((sum, row) => sum + row.used, 0)),
+      remain: round2(all.reduce((sum, row) => sum + row.remain, 0)),
+      count: live.length,
+      usedUp: Math.max(0, all.length - live.length),
+      hidden: Math.max(0, live.length - visible.length)
+    }
+  };
+}
+function trackExpiring(balance, { nowMs = Date.now(), limit = DEFAULT_EXPIRING_LIMIT, file } = {}) {
+  const sample = sampleOfBalance(balance, nowMs);
+  if (sample === void 0) return { cycle: void 0, rows: [], totals: void 0, recorded: false };
+  try {
+    const book = readQuotaBook(file);
+    const next = recordObservation(book, sample);
+    const recorded = writeQuotaBook(next, file);
+    const projection = projectExpiring(next, { limit, nowMs });
+    return { ...projection, recorded };
+  } catch {
+    return { cycle: void 0, rows: [], totals: void 0, recorded: false };
+  }
+}
+function readQuotaBook(file = quotaBucketsPath()) {
+  try {
+    return sanitizeQuotaBook(JSON.parse(fs3.readFileSync(file, "utf8")));
+  } catch {
+    return emptyQuotaBook();
+  }
+}
+function writeQuotaBook(book, file = quotaBucketsPath()) {
+  try {
+    fs3.mkdirSync(path4.dirname(file), { recursive: true });
+    const temporary = `${file}.tmp-${process.pid}`;
+    fs3.writeFileSync(temporary, `${JSON.stringify(book, null, 2)}
+`, { mode: 384 });
+    fs3.renameSync(temporary, file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // src/balance-route.js
+function parseExpiringLimit(raw) {
+  const parsed = Number.parseInt(String(raw ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_EXPIRING_LIMIT;
+  return Math.min(parsed, 20);
+}
 function isCredentialExpiredMessage(message2) {
   if (typeof message2 !== "string") return false;
   return /security token|token has expired|token expired|credential.*(expired|invalid)|APIG\.0602|HTTP (400|401|403)\b/i.test(message2);
@@ -32665,6 +33119,17 @@ function createBalanceRoute(deps) {
         return;
       }
       const checkin = deps.readCheckin();
+      let expiring = null;
+      if (typeof deps.trackExpiring === "function") {
+        try {
+          const projection = await deps.trackExpiring(result.balance, {
+            limit: parseExpiringLimit(url.searchParams.get("limit"))
+          });
+          expiring = projection ?? null;
+        } catch {
+          expiring = null;
+        }
+      }
       send(200, {
         ok: true,
         balance: result.balance,
@@ -32675,7 +33140,8 @@ function createBalanceRoute(deps) {
           lastAt: checkin.lastAt,
           channels: checkin.channels
         },
-        today: utc8DateString()
+        today: utc8DateString(),
+        expiring
       });
     } catch (error) {
       send(500, { ok: false, error: { message: error instanceof Error ? error.message : String(error) } });
@@ -32880,14 +33346,14 @@ function createAdminRoute(deps) {
 // src/index.ts
 var name = "dsh-ofm-huawei-codearts";
 var inject = ["llm", "credentials"];
-var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path4.join(os2.homedir(), ".dsh");
-var CHANNEL_STATE_FILE = path4.join(DSH_HOME_DIR2, "channel-pack", "state.json");
-var CREDENTIAL_STORE_FILE = path4.join(DSH_HOME_DIR2, ".credentials.yaml");
+var DSH_HOME_DIR3 = process.env.DSH_HOME ?? path5.join(os3.homedir(), ".dsh");
+var CHANNEL_STATE_FILE = path5.join(DSH_HOME_DIR3, "channel-pack", "state.json");
+var CREDENTIAL_STORE_FILE = path5.join(DSH_HOME_DIR3, ".credentials.yaml");
 var LEGACY_CREDENTIAL_REF = "CODEARTS_ACCESS_TOKEN";
 var CATALOG_MIN_RETRY_MS = 5 * 6e4;
 function credentialRefsFromChannelState() {
   try {
-    const state = JSON.parse(fs3.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs4.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     return (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account) => String(account.credentialRef ?? "")).filter((ref) => ref.length > 0);
   } catch {
     return [];
@@ -32895,7 +33361,7 @@ function credentialRefsFromChannelState() {
 }
 function credentialRefsFromStore() {
   try {
-    const text = fs3.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
+    const text = fs4.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
     return [...text.matchAll(/\bCODEARTS_ACCOUNT_[0-9A-Fa-f]{6,}\b/g)].map((match) => match[0]);
   } catch {
     return [];
@@ -32910,7 +33376,7 @@ function candidateCredentialRefs() {
 }
 function codeArtsAccounts() {
   try {
-    const state = JSON.parse(fs3.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs4.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     const accounts = (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account, index) => ({
       id: String(account.id ?? `codearts-${index + 1}`),
       nickname: String(account.nickname ?? ""),
@@ -33080,7 +33546,14 @@ function apply(ctx) {
           return credential === void 0 ? void 0 : { ref: account.ref, credential };
         },
         fetchBalance: (credential) => fetchCodeArtsCreditBalance(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
-        readCheckin: () => createFileAutoCheckinStore({ home: resolveAutoCheckinHome(ctx) }).load()
+        readCheckin: () => createFileAutoCheckinStore({ home: resolveAutoCheckinHome(ctx) }).load(),
+        // 到期明细：远端没有明细 API，只能本地观测 + 反解（见 src/quota-ledger.js）。
+        // 落盘位置可用 CODEARTS_QUOTA_FILE 覆盖；任何异常都在 ledger 内部吞掉，
+        // 最坏情况是 expiring=null（设置页显示「暂无」），不影响余额展示。
+        trackExpiring: async (balance, options = {}) => trackExpiring(balance, {
+          limit: options.limit,
+          file: process.env.CODEARTS_QUOTA_FILE !== void 0 && String(process.env.CODEARTS_QUOTA_FILE).trim().length > 0 ? String(process.env.CODEARTS_QUOTA_FILE).trim() : void 0
+        })
       },
       // refresh_token 是一次性的，失效后只能重新授权：设置页给一个按钮，
       // 点击后 POST /login 拿到 portal 授权 URL，浏览器完成授权即回写凭据。
