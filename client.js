@@ -783,7 +783,14 @@ window.__ModuleLoader__.load({
                         h('span', null, `${t('expiringColAmount')} `, h('b', { style: styles.metaNum }, credit(row.amount))),
                         h('span', null, `${t('expiringColUsed')} `, h('b', { style: styles.metaNum }, credit(row.used))),
                         h('span', { style: styles.expireCell },
-                          h('span', null, `${t('expiringColExpire')} `, h('b', { style: styles.metaNum }, row.expireLabel || '—')),
+                          // 「精确」行的截止日一律按官方 end_date 展示：服务端旧版
+                          // expireLabel 是 end_date+1（cycleEndMsOf 返回次日 00:00
+                          // 再按 UTC+8 格式化），这里用周期权威字段兜底，避免
+                          // 「精确 = end_date」的说明与显示的日期自相矛盾。
+                          h('span', null, `${t('expiringColExpire')} `, h('b', { style: styles.metaNum },
+                            row.expireExact === true && expiring?.cycle?.endDate
+                              ? expiring.cycle.endDate
+                              : (row.expireLabel || '—'))),
                           h('span', {
                             style: { ...styles.tag, ...(row.expireExact === true ? styles.tagOk : styles.tagWarn) },
                           }, row.expireExact === true ? t('expiringPrecise') : t('expiringEstimated')),
