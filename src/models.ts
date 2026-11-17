@@ -61,6 +61,35 @@ export const MODEL_REFRESH_INTERVAL_MS = 2 * 3_600_000
 export interface RemoteModel {
   id: string
   name: string
+  /**
+   * 目录声明的上下文窗口（tokens）。来自 `/v1/model/builtin` 的
+   * `context_window`；undefined = 目录没给（调用方回退本地能力表）。
+   */
+  contextWindow?: number
+  /** 目录声明的单次输出上限（tokens）。来自 `max_tokens`。 */
+  maxTokens?: number
+  /** 目录声明支持图片输入。来自 `supports_images`。 */
+  supportsImages?: boolean
+  /** 目录给的中文描述。来自 `model_desc`。 */
+  description?: string
+}
+
+/** 解析目录里 token 数量字段：只接受正的安全整数。 */
+function positiveTokenCount(value: unknown): number | undefined {
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number > 0 ? number : undefined
+}
+
+/** 解析目录里的布尔能力位：兼容 true / 1 / "true"。 */
+function readCapabilityFlag(value: unknown): boolean | undefined {
+  if (value === true || value === 1) return true
+  if (value === false || value === 0) return false
+  if (typeof value === 'string') {
+    const text = value.trim().toLowerCase()
+    if (text === 'true' || text === '1') return true
+    if (text === 'false' || text === '0') return false
+  }
+  return undefined
 }
 
 /** 模块级内存缓存：远端拉取或磁盘加载后填充；availableCodeArtsModels 优先读取。 */
@@ -117,7 +146,20 @@ function parseModelInfo(
     : id
   if (seen.has(id)) return undefined
   seen.add(id)
-  return { id, name }
+  const model: RemoteModel = { id, name }
+  // 能力字段以目录为唯一来源（2026-11-17：用户要求「重新获取」而不是沿用
+  // 硬编码能力表；目录没给时调用方回退本地表，所以这里只在有值时写入）。
+  const contextWindow = positiveTokenCount(m['context_window'])
+  if (contextWindow !== undefined) model.contextWindow = contextWindow
+  const maxTokens = positiveTokenCount(m['max_tokens'])
+  if (maxTokens !== undefined) model.maxTokens = maxTokens
+  const supportsImages = readCapabilityFlag(m['supports_images'])
+  if (supportsImages !== undefined) model.supportsImages = supportsImages
+  const description = m['model_desc']
+  if (typeof description === 'string' && description.trim().length > 0) {
+    model.description = description.trim().slice(0, 200)
+  }
+  return model
 }
 
 /** 从 JSON 响应中沿路径指针取数组。 */
@@ -304,11 +346,44 @@ export function loadModelsCache(): RemoteModel[] | undefined {
   try {
     if (!existsSync(path)) return undefined
     const text = readFileSync(path, 'utf-8')
-    const models: RemoteModel[] = JSON.parse(text)
-    return Array.isArray(models) && models.length > 0 ? models : undefined
+    const parsed: unknown = JSON.parse(text)
+    if (!Array.isArray(parsed) || parsed.length === 0) return undefined
+    return normalizeCachedModels(parsed)
   } catch {
     return undefined
   }
+}
+
+/**
+ * 归一化磁盘缓存条目。
+ *
+ * 兼容 2026-11-17 之前的旧缓存（只有 id/name）：缺能力字段的行照常返回，
+ * 由调用方回退本地能力表；损坏行（id/name 不合法）直接丢弃，避免把脏数据
+ * 当成目录播报给模型选择器。
+ */
+export function normalizeCachedModels(entries: readonly unknown[]): RemoteModel[] {
+  const out: RemoteModel[] = []
+  const seen = new Set<string>()
+  for (const entry of entries) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const raw = entry as Record<string, unknown>
+    const id = typeof raw['id'] === 'string' ? raw['id'].trim() : ''
+    if (id.length === 0 || id.length > 200 || seen.has(id)) continue
+    seen.add(id)
+    const name = typeof raw['name'] === 'string' && raw['name'].trim().length > 0 ? raw['name'].trim() : id
+    const model: RemoteModel = { id, name }
+    const contextWindow = positiveTokenCount(raw['contextWindow'])
+    if (contextWindow !== undefined) model.contextWindow = contextWindow
+    const maxTokens = positiveTokenCount(raw['maxTokens'])
+    if (maxTokens !== undefined) model.maxTokens = maxTokens
+    const supportsImages = readCapabilityFlag(raw['supportsImages'])
+    if (supportsImages !== undefined) model.supportsImages = supportsImages
+    if (typeof raw['description'] === 'string' && raw['description'].trim().length > 0) {
+      model.description = raw['description'].trim().slice(0, 200)
+    }
+    out.push(model)
+  }
+  return out.length > 0 ? out : undefined
 }
 
 /**

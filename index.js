@@ -13,11 +13,7 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
 var __commonJS = (cb, mod) => function __require2() {
-  try {
-    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-  } catch (e) {
-    throw mod = 0, e;
-  }
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -41,79 +37,79 @@ var require_symbols = __commonJS({
   "../../build-deps/node_modules/undici/lib/core/symbols.js"(exports, module) {
     "use strict";
     module.exports = {
-      kClose: /* @__PURE__ */ Symbol("close"),
-      kDestroy: /* @__PURE__ */ Symbol("destroy"),
-      kDispatch: /* @__PURE__ */ Symbol("dispatch"),
-      kUrl: /* @__PURE__ */ Symbol("url"),
-      kWriting: /* @__PURE__ */ Symbol("writing"),
-      kResuming: /* @__PURE__ */ Symbol("resuming"),
-      kQueue: /* @__PURE__ */ Symbol("queue"),
-      kConnect: /* @__PURE__ */ Symbol("connect"),
-      kConnecting: /* @__PURE__ */ Symbol("connecting"),
-      kKeepAliveDefaultTimeout: /* @__PURE__ */ Symbol("default keep alive timeout"),
-      kKeepAliveMaxTimeout: /* @__PURE__ */ Symbol("max keep alive timeout"),
-      kKeepAliveTimeoutThreshold: /* @__PURE__ */ Symbol("keep alive timeout threshold"),
-      kKeepAliveTimeoutValue: /* @__PURE__ */ Symbol("keep alive timeout"),
-      kKeepAlive: /* @__PURE__ */ Symbol("keep alive"),
-      kHeadersTimeout: /* @__PURE__ */ Symbol("headers timeout"),
-      kBodyTimeout: /* @__PURE__ */ Symbol("body timeout"),
-      kServerName: /* @__PURE__ */ Symbol("server name"),
-      kLocalAddress: /* @__PURE__ */ Symbol("local address"),
-      kHost: /* @__PURE__ */ Symbol("host"),
-      kNoRef: /* @__PURE__ */ Symbol("no ref"),
-      kBodyUsed: /* @__PURE__ */ Symbol("used"),
-      kBody: /* @__PURE__ */ Symbol("abstracted request body"),
-      kRunning: /* @__PURE__ */ Symbol("running"),
-      kBlocking: /* @__PURE__ */ Symbol("blocking"),
-      kPending: /* @__PURE__ */ Symbol("pending"),
-      kSize: /* @__PURE__ */ Symbol("size"),
-      kBusy: /* @__PURE__ */ Symbol("busy"),
-      kQueued: /* @__PURE__ */ Symbol("queued"),
-      kFree: /* @__PURE__ */ Symbol("free"),
-      kConnected: /* @__PURE__ */ Symbol("connected"),
-      kClosed: /* @__PURE__ */ Symbol("closed"),
-      kNeedDrain: /* @__PURE__ */ Symbol("need drain"),
-      kReset: /* @__PURE__ */ Symbol("reset"),
-      kDestroyed: /* @__PURE__ */ Symbol.for("nodejs.stream.destroyed"),
-      kResume: /* @__PURE__ */ Symbol("resume"),
-      kOnError: /* @__PURE__ */ Symbol("on error"),
-      kMaxHeadersSize: /* @__PURE__ */ Symbol("max headers size"),
-      kRunningIdx: /* @__PURE__ */ Symbol("running index"),
-      kPendingIdx: /* @__PURE__ */ Symbol("pending index"),
-      kError: /* @__PURE__ */ Symbol("error"),
-      kClients: /* @__PURE__ */ Symbol("clients"),
-      kClient: /* @__PURE__ */ Symbol("client"),
-      kParser: /* @__PURE__ */ Symbol("parser"),
-      kOnDestroyed: /* @__PURE__ */ Symbol("destroy callbacks"),
-      kPipelining: /* @__PURE__ */ Symbol("pipelining"),
-      kSocket: /* @__PURE__ */ Symbol("socket"),
-      kHostHeader: /* @__PURE__ */ Symbol("host header"),
-      kConnector: /* @__PURE__ */ Symbol("connector"),
-      kStrictContentLength: /* @__PURE__ */ Symbol("strict content length"),
-      kMaxRedirections: /* @__PURE__ */ Symbol("maxRedirections"),
-      kMaxRequests: /* @__PURE__ */ Symbol("maxRequestsPerClient"),
-      kProxy: /* @__PURE__ */ Symbol("proxy agent options"),
-      kCounter: /* @__PURE__ */ Symbol("socket request counter"),
-      kMaxResponseSize: /* @__PURE__ */ Symbol("max response size"),
-      kHTTP2Session: /* @__PURE__ */ Symbol("http2Session"),
-      kHTTP2Options: /* @__PURE__ */ Symbol("http2 options"),
-      kHTTP2SessionState: /* @__PURE__ */ Symbol("http2Session state"),
-      kRetryHandlerDefaultRetry: /* @__PURE__ */ Symbol("retry agent default retry"),
-      kConstruct: /* @__PURE__ */ Symbol("constructable"),
-      kListeners: /* @__PURE__ */ Symbol("listeners"),
-      kHTTPContext: /* @__PURE__ */ Symbol("http context"),
-      kMaxConcurrentStreams: /* @__PURE__ */ Symbol("max concurrent streams"),
-      kHostAuthority: /* @__PURE__ */ Symbol("host authority"),
-      kHTTP2InitialWindowSize: /* @__PURE__ */ Symbol("http2 initial window size"),
-      kHTTP2ConnectionWindowSize: /* @__PURE__ */ Symbol("http2 connection window size"),
-      kEnableConnectProtocol: /* @__PURE__ */ Symbol("http2session connect protocol"),
-      kRemoteSettings: /* @__PURE__ */ Symbol("http2session remote settings"),
-      kHTTP2Stream: /* @__PURE__ */ Symbol("http2session client stream"),
-      kPingInterval: /* @__PURE__ */ Symbol("ping interval"),
-      kNoProxyAgent: /* @__PURE__ */ Symbol("no proxy agent"),
-      kHttpProxyAgent: /* @__PURE__ */ Symbol("http proxy agent"),
-      kHttpsProxyAgent: /* @__PURE__ */ Symbol("https proxy agent"),
-      kSocks5ProxyAgent: /* @__PURE__ */ Symbol("socks5 proxy agent")
+      kClose: Symbol("close"),
+      kDestroy: Symbol("destroy"),
+      kDispatch: Symbol("dispatch"),
+      kUrl: Symbol("url"),
+      kWriting: Symbol("writing"),
+      kResuming: Symbol("resuming"),
+      kQueue: Symbol("queue"),
+      kConnect: Symbol("connect"),
+      kConnecting: Symbol("connecting"),
+      kKeepAliveDefaultTimeout: Symbol("default keep alive timeout"),
+      kKeepAliveMaxTimeout: Symbol("max keep alive timeout"),
+      kKeepAliveTimeoutThreshold: Symbol("keep alive timeout threshold"),
+      kKeepAliveTimeoutValue: Symbol("keep alive timeout"),
+      kKeepAlive: Symbol("keep alive"),
+      kHeadersTimeout: Symbol("headers timeout"),
+      kBodyTimeout: Symbol("body timeout"),
+      kServerName: Symbol("server name"),
+      kLocalAddress: Symbol("local address"),
+      kHost: Symbol("host"),
+      kNoRef: Symbol("no ref"),
+      kBodyUsed: Symbol("used"),
+      kBody: Symbol("abstracted request body"),
+      kRunning: Symbol("running"),
+      kBlocking: Symbol("blocking"),
+      kPending: Symbol("pending"),
+      kSize: Symbol("size"),
+      kBusy: Symbol("busy"),
+      kQueued: Symbol("queued"),
+      kFree: Symbol("free"),
+      kConnected: Symbol("connected"),
+      kClosed: Symbol("closed"),
+      kNeedDrain: Symbol("need drain"),
+      kReset: Symbol("reset"),
+      kDestroyed: Symbol.for("nodejs.stream.destroyed"),
+      kResume: Symbol("resume"),
+      kOnError: Symbol("on error"),
+      kMaxHeadersSize: Symbol("max headers size"),
+      kRunningIdx: Symbol("running index"),
+      kPendingIdx: Symbol("pending index"),
+      kError: Symbol("error"),
+      kClients: Symbol("clients"),
+      kClient: Symbol("client"),
+      kParser: Symbol("parser"),
+      kOnDestroyed: Symbol("destroy callbacks"),
+      kPipelining: Symbol("pipelining"),
+      kSocket: Symbol("socket"),
+      kHostHeader: Symbol("host header"),
+      kConnector: Symbol("connector"),
+      kStrictContentLength: Symbol("strict content length"),
+      kMaxRedirections: Symbol("maxRedirections"),
+      kMaxRequests: Symbol("maxRequestsPerClient"),
+      kProxy: Symbol("proxy agent options"),
+      kCounter: Symbol("socket request counter"),
+      kMaxResponseSize: Symbol("max response size"),
+      kHTTP2Session: Symbol("http2Session"),
+      kHTTP2Options: Symbol("http2 options"),
+      kHTTP2SessionState: Symbol("http2Session state"),
+      kRetryHandlerDefaultRetry: Symbol("retry agent default retry"),
+      kConstruct: Symbol("constructable"),
+      kListeners: Symbol("listeners"),
+      kHTTPContext: Symbol("http context"),
+      kMaxConcurrentStreams: Symbol("max concurrent streams"),
+      kHostAuthority: Symbol("host authority"),
+      kHTTP2InitialWindowSize: Symbol("http2 initial window size"),
+      kHTTP2ConnectionWindowSize: Symbol("http2 connection window size"),
+      kEnableConnectProtocol: Symbol("http2session connect protocol"),
+      kRemoteSettings: Symbol("http2session remote settings"),
+      kHTTP2Stream: Symbol("http2session client stream"),
+      kPingInterval: Symbol("ping interval"),
+      kNoProxyAgent: Symbol("no proxy agent"),
+      kHttpProxyAgent: Symbol("http proxy agent"),
+      kHttpsProxyAgent: Symbol("https proxy agent"),
+      kSocks5ProxyAgent: Symbol("socks5 proxy agent")
     };
   }
 });
@@ -126,7 +122,7 @@ var require_timers = __commonJS({
     var RESOLUTION_MS = 1e3;
     var TICK_MS = (RESOLUTION_MS >> 1) - 1;
     var fastNowTimeout;
-    var kFastTimer = /* @__PURE__ */ Symbol("kFastTimer");
+    var kFastTimer = Symbol("kFastTimer");
     var fastTimers = [];
     var NOT_IN_LIST = -2;
     var TO_BE_CLEARED = -1;
@@ -351,7 +347,7 @@ var require_timers = __commonJS({
 var require_errors = __commonJS({
   "../../build-deps/node_modules/undici/lib/core/errors.js"(exports, module) {
     "use strict";
-    var kUndiciError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR");
+    var kUndiciError = Symbol.for("undici.error.UND_ERR");
     var UndiciError = class extends Error {
       constructor(message2, options) {
         super(message2, options);
@@ -365,7 +361,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kConnectTimeoutError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_CONNECT_TIMEOUT");
+    var kConnectTimeoutError = Symbol.for("undici.error.UND_ERR_CONNECT_TIMEOUT");
     var ConnectTimeoutError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -380,7 +376,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kHeadersTimeoutError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_HEADERS_TIMEOUT");
+    var kHeadersTimeoutError = Symbol.for("undici.error.UND_ERR_HEADERS_TIMEOUT");
     var HeadersTimeoutError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -395,7 +391,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kHeadersOverflowError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_HEADERS_OVERFLOW");
+    var kHeadersOverflowError = Symbol.for("undici.error.UND_ERR_HEADERS_OVERFLOW");
     var HeadersOverflowError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -410,7 +406,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kBodyTimeoutError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_BODY_TIMEOUT");
+    var kBodyTimeoutError = Symbol.for("undici.error.UND_ERR_BODY_TIMEOUT");
     var BodyTimeoutError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -425,7 +421,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kInvalidArgumentError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_INVALID_ARG");
+    var kInvalidArgumentError = Symbol.for("undici.error.UND_ERR_INVALID_ARG");
     var InvalidArgumentError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -440,7 +436,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kInvalidReturnValueError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_INVALID_RETURN_VALUE");
+    var kInvalidReturnValueError = Symbol.for("undici.error.UND_ERR_INVALID_RETURN_VALUE");
     var InvalidReturnValueError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -455,7 +451,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kAbortError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_ABORT");
+    var kAbortError = Symbol.for("undici.error.UND_ERR_ABORT");
     var AbortError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -470,7 +466,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kRequestAbortedError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_ABORTED");
+    var kRequestAbortedError = Symbol.for("undici.error.UND_ERR_ABORTED");
     var RequestAbortedError = class extends AbortError {
       constructor(message2) {
         super(message2);
@@ -485,7 +481,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kInformationalError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_INFO");
+    var kInformationalError = Symbol.for("undici.error.UND_ERR_INFO");
     var InformationalError = class extends UndiciError {
       constructor(message2, options) {
         super(message2, options);
@@ -500,7 +496,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kRequestContentLengthMismatchError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_REQ_CONTENT_LENGTH_MISMATCH");
+    var kRequestContentLengthMismatchError = Symbol.for("undici.error.UND_ERR_REQ_CONTENT_LENGTH_MISMATCH");
     var RequestContentLengthMismatchError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -515,7 +511,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kResponseContentLengthMismatchError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_RES_CONTENT_LENGTH_MISMATCH");
+    var kResponseContentLengthMismatchError = Symbol.for("undici.error.UND_ERR_RES_CONTENT_LENGTH_MISMATCH");
     var ResponseContentLengthMismatchError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -530,7 +526,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kClientDestroyedError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_DESTROYED");
+    var kClientDestroyedError = Symbol.for("undici.error.UND_ERR_DESTROYED");
     var ClientDestroyedError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -545,7 +541,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kClientClosedError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_CLOSED");
+    var kClientClosedError = Symbol.for("undici.error.UND_ERR_CLOSED");
     var ClientClosedError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -560,7 +556,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kSocketError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_SOCKET");
+    var kSocketError = Symbol.for("undici.error.UND_ERR_SOCKET");
     var SocketError = class extends UndiciError {
       constructor(message2, socket) {
         super(message2);
@@ -576,7 +572,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kNotSupportedError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_NOT_SUPPORTED");
+    var kNotSupportedError = Symbol.for("undici.error.UND_ERR_NOT_SUPPORTED");
     var NotSupportedError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -591,7 +587,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kBalancedPoolMissingUpstreamError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_BPL_MISSING_UPSTREAM");
+    var kBalancedPoolMissingUpstreamError = Symbol.for("undici.error.UND_ERR_BPL_MISSING_UPSTREAM");
     var BalancedPoolMissingUpstreamError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -606,7 +602,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kHTTPParserError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_HTTP_PARSER");
+    var kHTTPParserError = Symbol.for("undici.error.UND_ERR_HTTP_PARSER");
     var HTTPParserError = class extends Error {
       constructor(message2, code, data) {
         super(message2);
@@ -621,7 +617,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kResponseExceededMaxSizeError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_RES_EXCEEDED_MAX_SIZE");
+    var kResponseExceededMaxSizeError = Symbol.for("undici.error.UND_ERR_RES_EXCEEDED_MAX_SIZE");
     var ResponseExceededMaxSizeError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -636,7 +632,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kRequestRetryError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_REQ_RETRY");
+    var kRequestRetryError = Symbol.for("undici.error.UND_ERR_REQ_RETRY");
     var RequestRetryError = class extends UndiciError {
       constructor(message2, code, { headers, data }) {
         super(message2);
@@ -654,7 +650,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kResponseError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_RESPONSE");
+    var kResponseError = Symbol.for("undici.error.UND_ERR_RESPONSE");
     var ResponseError = class extends UndiciError {
       constructor(message2, code, { headers, body }) {
         super(message2);
@@ -672,7 +668,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kSecureProxyConnectionError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_PRX_TLS");
+    var kSecureProxyConnectionError = Symbol.for("undici.error.UND_ERR_PRX_TLS");
     var SecureProxyConnectionError = class extends UndiciError {
       constructor(cause, message2, options = {}) {
         super(message2, { cause, ...options });
@@ -688,7 +684,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kProxyConnectionError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_PRX_CONN");
+    var kProxyConnectionError = Symbol.for("undici.error.UND_ERR_PRX_CONN");
     var ProxyConnectionError = class extends UndiciError {
       constructor(cause, message2, options = {}) {
         super(message2, { cause, ...options });
@@ -704,7 +700,7 @@ var require_errors = __commonJS({
         return true;
       }
     };
-    var kMaxOriginsReachedError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_MAX_ORIGINS_REACHED");
+    var kMaxOriginsReachedError = Symbol.for("undici.error.UND_ERR_MAX_ORIGINS_REACHED");
     var MaxOriginsReachedError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -727,7 +723,7 @@ var require_errors = __commonJS({
         this.code = code || "UND_ERR_SOCKS5";
       }
     };
-    var kMessageSizeExceededError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED");
+    var kMessageSizeExceededError = Symbol.for("undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED");
     var MessageSizeExceededError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -2186,9 +2182,9 @@ var require_request = __commonJS({
       }
       return true;
     }
-    var kHandler = /* @__PURE__ */ Symbol("handler");
-    var kController = /* @__PURE__ */ Symbol("controller");
-    var kResume = /* @__PURE__ */ Symbol("resume");
+    var kHandler = Symbol("handler");
+    var kController = Symbol("controller");
+    var kResume = Symbol("resume");
     var RequestController = class {
       #paused = false;
       #reason = null;
@@ -2636,9 +2632,9 @@ var require_dispatcher_base = __commonJS({
       InvalidArgumentError
     } = require_errors();
     var { kDestroy, kClose, kClosed, kDestroyed, kDispatch } = require_symbols();
-    var kOnDestroyed = /* @__PURE__ */ Symbol("onDestroyed");
-    var kOnClosed = /* @__PURE__ */ Symbol("onClosed");
-    var kWebSocketOptions = /* @__PURE__ */ Symbol("webSocketOptions");
+    var kOnDestroyed = Symbol("onDestroyed");
+    var kOnClosed = Symbol("onClosed");
+    var kWebSocketOptions = Symbol("webSocketOptions");
     var DispatcherBase = class extends Dispatcher {
       /** @type {boolean} */
       [kDestroyed] = false;
@@ -3828,7 +3824,7 @@ var require_constants3 = __commonJS({
 var require_global = __commonJS({
   "../../build-deps/node_modules/undici/lib/web/fetch/global.js"(exports, module) {
     "use strict";
-    var globalOrigin = /* @__PURE__ */ Symbol.for("undici.globalOrigin.1");
+    var globalOrigin = Symbol.for("undici.globalOrigin.1");
     function getGlobalOrigin() {
       return globalThis[globalOrigin];
     }
@@ -6584,10 +6580,10 @@ var require_client_h1 = __commonJS({
     var EMPTY_BUF = Buffer.alloc(0);
     var FastBuffer = Buffer[Symbol.species];
     var removeAllListeners = util3.removeAllListeners;
-    var kIdleSocketValidation = /* @__PURE__ */ Symbol("kIdleSocketValidation");
-    var kIdleSocketValidationTimeout = /* @__PURE__ */ Symbol("kIdleSocketValidationTimeout");
-    var kSocketUsed = /* @__PURE__ */ Symbol("kSocketUsed");
-    var kTypeOfService = /* @__PURE__ */ Symbol("kTypeOfService");
+    var kIdleSocketValidation = Symbol("kIdleSocketValidation");
+    var kIdleSocketValidationTimeout = Symbol("kIdleSocketValidationTimeout");
+    var kSocketUsed = Symbol("kSocketUsed");
+    var kTypeOfService = Symbol("kTypeOfService");
     var extractBody;
     function lazyllhttp() {
       const llhttpWasmData = process.env.JEST_WORKER_ID ? require_llhttp_wasm() : void 0;
@@ -7877,14 +7873,14 @@ var require_client_h2 = __commonJS({
       kHTTP2Options
     } = require_symbols();
     var { channels } = require_diagnostics();
-    var kOpenStreams = /* @__PURE__ */ Symbol("open streams");
-    var kRequestStreamId = /* @__PURE__ */ Symbol("request stream id");
-    var kRequestStream = /* @__PURE__ */ Symbol("request stream");
-    var kRequestStreamCleanup = /* @__PURE__ */ Symbol("request stream cleanup");
-    var kRequestStreamState = /* @__PURE__ */ Symbol("request stream state");
-    var kReceivedGoAway = /* @__PURE__ */ Symbol("received goaway");
-    var kGoAwayReplayAttempts = /* @__PURE__ */ Symbol("goaway replay attempts");
-    var kRefusedStreamRetry = /* @__PURE__ */ Symbol("refused stream retry");
+    var kOpenStreams = Symbol("open streams");
+    var kRequestStreamId = Symbol("request stream id");
+    var kRequestStream = Symbol("request stream");
+    var kRequestStreamCleanup = Symbol("request stream cleanup");
+    var kRequestStreamState = Symbol("request stream state");
+    var kReceivedGoAway = Symbol("received goaway");
+    var kGoAwayReplayAttempts = Symbol("goaway replay attempts");
+    var kRefusedStreamRetry = Symbol("refused stream retry");
     var MAX_GOAWAY_REPLAY_ATTEMPTS = 1;
     var extractBody;
     var http2;
@@ -9133,7 +9129,7 @@ var require_client = __commonJS({
     } = require_symbols();
     var connectH1 = require_client_h1();
     var connectH2 = require_client_h2();
-    var kClosedResolve = /* @__PURE__ */ Symbol("kClosedResolve");
+    var kClosedResolve = Symbol("kClosedResolve");
     var getDefaultNodeMaxHeaderSize = http && http.maxHeaderSize && Number.isInteger(http.maxHeaderSize) && http.maxHeaderSize > 0 ? () => http.maxHeaderSize : () => {
       throw new InvalidArgumentError("http module not available or http.maxHeaderSize invalid");
     };
@@ -9738,18 +9734,18 @@ var require_pool_base = __commonJS({
     var DispatcherBase = require_dispatcher_base();
     var FixedQueue = require_fixed_queue();
     var { kConnected, kSize, kRunning, kPending, kQueued, kBusy, kFree, kUrl, kClose, kDestroy, kDispatch } = require_symbols();
-    var kClients = /* @__PURE__ */ Symbol("clients");
-    var kNeedDrain = /* @__PURE__ */ Symbol("needDrain");
-    var kQueue = /* @__PURE__ */ Symbol("queue");
-    var kClosedResolve = /* @__PURE__ */ Symbol("closed resolve");
-    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
-    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
-    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
-    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
-    var kGetDispatcher = /* @__PURE__ */ Symbol("get dispatcher");
-    var kHasDispatcher = /* @__PURE__ */ Symbol("has dispatcher");
-    var kAddClient = /* @__PURE__ */ Symbol("add client");
-    var kRemoveClient = /* @__PURE__ */ Symbol("remove client");
+    var kClients = Symbol("clients");
+    var kNeedDrain = Symbol("needDrain");
+    var kQueue = Symbol("queue");
+    var kClosedResolve = Symbol("closed resolve");
+    var kOnDrain = Symbol("onDrain");
+    var kOnConnect = Symbol("onConnect");
+    var kOnDisconnect = Symbol("onDisconnect");
+    var kOnConnectionError = Symbol("onConnectionError");
+    var kGetDispatcher = Symbol("get dispatcher");
+    var kHasDispatcher = Symbol("has dispatcher");
+    var kAddClient = Symbol("add client");
+    var kRemoveClient = Symbol("remove client");
     var PoolBase = class extends DispatcherBase {
       [kQueue] = new FixedQueue();
       [kQueued] = 0;
@@ -9937,9 +9933,9 @@ var require_pool = __commonJS({
     var util3 = require_util();
     var { kUrl } = require_symbols();
     var buildConnector = require_connect();
-    var kOptions = /* @__PURE__ */ Symbol("options");
-    var kConnections = /* @__PURE__ */ Symbol("connections");
-    var kFactory = /* @__PURE__ */ Symbol("factory");
+    var kOptions = Symbol("options");
+    var kConnections = Symbol("connections");
+    var kFactory = Symbol("factory");
     function defaultFactory(origin, opts) {
       return new Client(origin, opts);
     }
@@ -10060,14 +10056,14 @@ var require_balanced_pool = __commonJS({
     var Pool2 = require_pool();
     var { kUrl } = require_symbols();
     var util3 = require_util();
-    var kFactory = /* @__PURE__ */ Symbol("factory");
-    var kOptions = /* @__PURE__ */ Symbol("options");
-    var kGreatestCommonDivisor = /* @__PURE__ */ Symbol("kGreatestCommonDivisor");
-    var kCurrentWeight = /* @__PURE__ */ Symbol("kCurrentWeight");
-    var kIndex = /* @__PURE__ */ Symbol("kIndex");
-    var kWeight = /* @__PURE__ */ Symbol("kWeight");
-    var kMaxWeightPerServer = /* @__PURE__ */ Symbol("kMaxWeightPerServer");
-    var kErrorPenalty = /* @__PURE__ */ Symbol("kErrorPenalty");
+    var kFactory = Symbol("factory");
+    var kOptions = Symbol("options");
+    var kGreatestCommonDivisor = Symbol("kGreatestCommonDivisor");
+    var kCurrentWeight = Symbol("kCurrentWeight");
+    var kIndex = Symbol("kIndex");
+    var kWeight = Symbol("kWeight");
+    var kMaxWeightPerServer = Symbol("kMaxWeightPerServer");
+    var kErrorPenalty = Symbol("kErrorPenalty");
     function getGreatestCommonDivisor(a, b) {
       if (a === 0) return b;
       while (b !== 0) {
@@ -10206,10 +10202,10 @@ var require_round_robin_pool = __commonJS({
     var util3 = require_util();
     var { kUrl } = require_symbols();
     var buildConnector = require_connect();
-    var kOptions = /* @__PURE__ */ Symbol("options");
-    var kConnections = /* @__PURE__ */ Symbol("connections");
-    var kFactory = /* @__PURE__ */ Symbol("factory");
-    var kIndex = /* @__PURE__ */ Symbol("index");
+    var kOptions = Symbol("options");
+    var kConnections = Symbol("connections");
+    var kFactory = Symbol("factory");
+    var kIndex = Symbol("index");
     function defaultFactory(origin, opts) {
       return new Client(origin, opts);
     }
@@ -10333,13 +10329,13 @@ var require_agent = __commonJS({
     var Pool2 = require_pool();
     var Client = require_client();
     var util3 = require_util();
-    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
-    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
-    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
-    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
-    var kFactory = /* @__PURE__ */ Symbol("factory");
-    var kOptions = /* @__PURE__ */ Symbol("options");
-    var kOrigins = /* @__PURE__ */ Symbol("origins");
+    var kOnConnect = Symbol("onConnect");
+    var kOnDisconnect = Symbol("onDisconnect");
+    var kOnConnectionError = Symbol("onConnectionError");
+    var kOnDrain = Symbol("onDrain");
+    var kFactory = Symbol("factory");
+    var kOptions = Symbol("options");
+    var kOrigins = Symbol("origins");
     function defaultFactory(origin, opts) {
       return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool2(origin, opts);
     }
@@ -11054,13 +11050,13 @@ var require_socks5_proxy_agent = __commonJS({
     var buildConnector = require_connect();
     var { debuglog } = __require("node:util");
     var debug = debuglog("undici:socks5-proxy");
-    var kProxyUrl = /* @__PURE__ */ Symbol("proxy url");
-    var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
-    var kProxyAuth = /* @__PURE__ */ Symbol("proxy auth");
-    var kProxyProtocol = /* @__PURE__ */ Symbol("proxy protocol");
-    var kPools = /* @__PURE__ */ Symbol("pools");
-    var kConnector = /* @__PURE__ */ Symbol("connector");
-    var kRequestTls = /* @__PURE__ */ Symbol("request tls settings");
+    var kProxyUrl = Symbol("proxy url");
+    var kProxyHeaders = Symbol("proxy headers");
+    var kProxyAuth = Symbol("proxy auth");
+    var kProxyProtocol = Symbol("proxy protocol");
+    var kPools = Symbol("pools");
+    var kConnector = Symbol("connector");
+    var kRequestTls = Symbol("request tls settings");
     var experimentalWarningEmitted = false;
     var Socks5ProxyAgent = class extends DispatcherBase {
       constructor(proxyUrl, options = {}) {
@@ -11267,14 +11263,14 @@ var require_proxy_agent = __commonJS({
     var Client = require_client();
     var { channels } = require_diagnostics();
     var Socks5ProxyAgent = require_socks5_proxy_agent();
-    var kAgent = /* @__PURE__ */ Symbol("proxy agent");
-    var kClient = /* @__PURE__ */ Symbol("proxy client");
-    var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
-    var kRequestTls = /* @__PURE__ */ Symbol("request tls settings");
-    var kProxyTls = /* @__PURE__ */ Symbol("proxy tls settings");
-    var kConnectEndpoint = /* @__PURE__ */ Symbol("connect endpoint function");
-    var kConnectEndpointHTTP1 = /* @__PURE__ */ Symbol("connect endpoint function (http/1.1 only)");
-    var kTunnelProxy = /* @__PURE__ */ Symbol("tunnel proxy");
+    var kAgent = Symbol("proxy agent");
+    var kClient = Symbol("proxy client");
+    var kProxyHeaders = Symbol("proxy headers");
+    var kRequestTls = Symbol("request tls settings");
+    var kProxyTls = Symbol("proxy tls settings");
+    var kConnectEndpoint = Symbol("connect endpoint function");
+    var kConnectEndpointHTTP1 = Symbol("connect endpoint function (http/1.1 only)");
+    var kTunnelProxy = Symbol("tunnel proxy");
     var proxyAuthorization = "proxy-authorization";
     function defaultProtocolPort(protocol) {
       return protocol === "https:" ? 443 : 80;
@@ -12142,14 +12138,14 @@ var require_readable = __commonJS({
     var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError } = require_errors();
     var util3 = require_util();
     var { ReadableStreamFrom } = require_util();
-    var kConsume = /* @__PURE__ */ Symbol("kConsume");
-    var kReading = /* @__PURE__ */ Symbol("kReading");
-    var kBody = /* @__PURE__ */ Symbol("kBody");
-    var kAbort = /* @__PURE__ */ Symbol("kAbort");
-    var kContentType = /* @__PURE__ */ Symbol("kContentType");
-    var kContentLength = /* @__PURE__ */ Symbol("kContentLength");
-    var kUsed = /* @__PURE__ */ Symbol("kUsed");
-    var kBytesRead = /* @__PURE__ */ Symbol("kBytesRead");
+    var kConsume = Symbol("kConsume");
+    var kReading = Symbol("kReading");
+    var kBody = Symbol("kBody");
+    var kAbort = Symbol("kAbort");
+    var kContentType = Symbol("kContentType");
+    var kContentLength = Symbol("kContentLength");
+    var kUsed = Symbol("kUsed");
+    var kBytesRead = Symbol("kBytesRead");
     var noop = () => {
     };
     var BodyReadable = class extends Readable {
@@ -12752,8 +12748,8 @@ var require_abort_signal = __commonJS({
     "use strict";
     var { addAbortListener } = require_util();
     var { RequestAbortedError } = require_errors();
-    var kListener = /* @__PURE__ */ Symbol("kListener");
-    var kSignal = /* @__PURE__ */ Symbol("kSignal");
+    var kListener = Symbol("kListener");
+    var kSignal = Symbol("kSignal");
     function abort(self) {
       if (self.abort) {
         self.abort(self[kSignal]?.reason);
@@ -13029,7 +13025,7 @@ var require_api_pipeline = __commonJS({
     var { addSignal, removeSignal } = require_abort_signal();
     function noop() {
     }
-    var kResume = /* @__PURE__ */ Symbol("resume");
+    var kResume = Symbol("resume");
     var PipelineRequest = class extends Readable {
       constructor() {
         super({ autoDestroy: true });
@@ -13424,7 +13420,7 @@ var require_mock_errors = __commonJS({
   "../../build-deps/node_modules/undici/lib/mock/mock-errors.js"(exports, module) {
     "use strict";
     var { UndiciError } = require_errors();
-    var kMockNotMatchedError = /* @__PURE__ */ Symbol.for("undici.error.UND_MOCK_ERR_MOCK_NOT_MATCHED");
+    var kMockNotMatchedError = Symbol.for("undici.error.UND_MOCK_ERR_MOCK_NOT_MATCHED");
     var MockNotMatchedError = class extends UndiciError {
       constructor(message2) {
         super(message2);
@@ -13450,34 +13446,34 @@ var require_mock_symbols = __commonJS({
   "../../build-deps/node_modules/undici/lib/mock/mock-symbols.js"(exports, module) {
     "use strict";
     module.exports = {
-      kAgent: /* @__PURE__ */ Symbol("agent"),
-      kOptions: /* @__PURE__ */ Symbol("options"),
-      kFactory: /* @__PURE__ */ Symbol("factory"),
-      kDispatches: /* @__PURE__ */ Symbol("dispatches"),
-      kDispatchKey: /* @__PURE__ */ Symbol("dispatch key"),
-      kDefaultHeaders: /* @__PURE__ */ Symbol("default headers"),
-      kDefaultTrailers: /* @__PURE__ */ Symbol("default trailers"),
-      kContentLength: /* @__PURE__ */ Symbol("content length"),
-      kMockAgent: /* @__PURE__ */ Symbol("mock agent"),
-      kMockAgentSet: /* @__PURE__ */ Symbol("mock agent set"),
-      kMockAgentGet: /* @__PURE__ */ Symbol("mock agent get"),
-      kMockDispatch: /* @__PURE__ */ Symbol("mock dispatch"),
-      kClose: /* @__PURE__ */ Symbol("close"),
-      kOriginalClose: /* @__PURE__ */ Symbol("original agent close"),
-      kOriginalDispatch: /* @__PURE__ */ Symbol("original dispatch"),
-      kOrigin: /* @__PURE__ */ Symbol("origin"),
-      kIsMockActive: /* @__PURE__ */ Symbol("is mock active"),
-      kNetConnect: /* @__PURE__ */ Symbol("net connect"),
-      kGetNetConnect: /* @__PURE__ */ Symbol("get net connect"),
-      kConnected: /* @__PURE__ */ Symbol("connected"),
-      kIgnoreTrailingSlash: /* @__PURE__ */ Symbol("ignore trailing slash"),
-      kMockAgentMockCallHistoryInstance: /* @__PURE__ */ Symbol("mock agent mock call history name"),
-      kMockAgentRegisterCallHistory: /* @__PURE__ */ Symbol("mock agent register mock call history"),
-      kMockAgentAddCallHistoryLog: /* @__PURE__ */ Symbol("mock agent add call history log"),
-      kMockAgentIsCallHistoryEnabled: /* @__PURE__ */ Symbol("mock agent is call history enabled"),
-      kMockAgentAcceptsNonStandardSearchParameters: /* @__PURE__ */ Symbol("mock agent accepts non standard search parameters"),
-      kMockCallHistoryAddLog: /* @__PURE__ */ Symbol("mock call history add log"),
-      kTotalDispatchCount: /* @__PURE__ */ Symbol("total dispatch count")
+      kAgent: Symbol("agent"),
+      kOptions: Symbol("options"),
+      kFactory: Symbol("factory"),
+      kDispatches: Symbol("dispatches"),
+      kDispatchKey: Symbol("dispatch key"),
+      kDefaultHeaders: Symbol("default headers"),
+      kDefaultTrailers: Symbol("default trailers"),
+      kContentLength: Symbol("content length"),
+      kMockAgent: Symbol("mock agent"),
+      kMockAgentSet: Symbol("mock agent set"),
+      kMockAgentGet: Symbol("mock agent get"),
+      kMockDispatch: Symbol("mock dispatch"),
+      kClose: Symbol("close"),
+      kOriginalClose: Symbol("original agent close"),
+      kOriginalDispatch: Symbol("original dispatch"),
+      kOrigin: Symbol("origin"),
+      kIsMockActive: Symbol("is mock active"),
+      kNetConnect: Symbol("net connect"),
+      kGetNetConnect: Symbol("get net connect"),
+      kConnected: Symbol("connected"),
+      kIgnoreTrailingSlash: Symbol("ignore trailing slash"),
+      kMockAgentMockCallHistoryInstance: Symbol("mock agent mock call history name"),
+      kMockAgentRegisterCallHistory: Symbol("mock agent register mock call history"),
+      kMockAgentAddCallHistoryLog: Symbol("mock agent add call history log"),
+      kMockAgentIsCallHistoryEnabled: Symbol("mock agent is call history enabled"),
+      kMockAgentAcceptsNonStandardSearchParameters: Symbol("mock agent accepts non standard search parameters"),
+      kMockCallHistoryAddLog: Symbol("mock call history add log"),
+      kTotalDispatchCount: Symbol("total dispatch count")
     };
   }
 });
@@ -13503,7 +13499,7 @@ var require_mock_utils = __commonJS({
       }
     } = __require("node:util");
     var { InvalidArgumentError } = require_errors();
-    var requestAborted = /* @__PURE__ */ Symbol("request aborted");
+    var requestAborted = Symbol("request aborted");
     function matchValue(match, value) {
       if (typeof match === "string") {
         return match === value;
@@ -15244,11 +15240,11 @@ var require_snapshot_agent = __commonJS({
     var { InvalidArgumentError, UndiciError } = require_errors();
     var util3 = require_util();
     var { validateSnapshotMode } = require_snapshot_utils();
-    var kSnapshotRecorder = /* @__PURE__ */ Symbol("kSnapshotRecorder");
-    var kSnapshotMode = /* @__PURE__ */ Symbol("kSnapshotMode");
-    var kSnapshotPath = /* @__PURE__ */ Symbol("kSnapshotPath");
-    var kSnapshotLoaded = /* @__PURE__ */ Symbol("kSnapshotLoaded");
-    var kRealAgent = /* @__PURE__ */ Symbol("kRealAgent");
+    var kSnapshotRecorder = Symbol("kSnapshotRecorder");
+    var kSnapshotMode = Symbol("kSnapshotMode");
+    var kSnapshotPath = Symbol("kSnapshotPath");
+    var kSnapshotLoaded = Symbol("kSnapshotLoaded");
+    var kRealAgent = Symbol("kRealAgent");
     var warningEmitted = false;
     var SnapshotAgent = class extends MockAgent {
       constructor(opts = {}) {
@@ -15537,8 +15533,8 @@ var require_snapshot_agent = __commonJS({
 var require_global2 = __commonJS({
   "../../build-deps/node_modules/undici/lib/global.js"(exports, module) {
     "use strict";
-    var globalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.2");
-    var legacyGlobalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.1");
+    var globalDispatcher = Symbol.for("undici.globalDispatcher.2");
+    var legacyGlobalDispatcher = Symbol.for("undici.globalDispatcher.1");
     var { InvalidArgumentError } = require_errors();
     var Agent3 = require_agent();
     var Dispatcher1Wrapper2 = require_dispatcher1_wrapper();
@@ -16484,7 +16480,7 @@ var require_cache = __commonJS({
     var { serializePathWithQuery } = require_util();
     var MAX_DELTA_SECONDS = 2147483647;
     var RESTRICTIVE_DIRECTIVE_NAMES = ["no-store", "private", "no-cache"];
-    var kInvalidCacheControlDirectives = /* @__PURE__ */ Symbol("invalid cache-control directives");
+    var kInvalidCacheControlDirectives = Symbol("invalid cache-control directives");
     function trimOWS(value) {
       return value.replace(/^[\t ]+|[\t ]+$/g, "");
     }
@@ -20707,7 +20703,7 @@ var require_request2 = __commonJS({
     var { kConstruct } = require_symbols();
     var assert = __require("node:assert");
     var { getMaxListeners, setMaxListeners, defaultMaxListeners } = __require("node:events");
-    var kAbortController = /* @__PURE__ */ Symbol("abortController");
+    var kAbortController = Symbol("abortController");
     var requestFinalizer = new FinalizationRegistry(({ signal, abort }) => {
       signal.removeEventListener("abort", abort);
     });
@@ -22476,7 +22472,7 @@ var require_fetch = __commonJS({
             fetchParams.controller.terminate(e);
           }
         };
-        requestBody = (async function* () {
+        requestBody = async function* () {
           try {
             for await (const bytes of request.body.stream) {
               yield* processBodyChunk(bytes);
@@ -22485,7 +22481,7 @@ var require_fetch = __commonJS({
           } catch (err) {
             processBodyError(err);
           }
-        })();
+        }();
       }
       try {
         const { body, status, statusText, headersList, socket } = await dispatch({ body: requestBody });
@@ -24690,8 +24686,8 @@ var require_permessage_deflate = __commonJS({
     var { isValidClientWindowBits } = require_util5();
     var { MessageSizeExceededError } = require_errors();
     var tail = Buffer.from([0, 0, 255, 255]);
-    var kBuffer = /* @__PURE__ */ Symbol("kBuffer");
-    var kLength = /* @__PURE__ */ Symbol("kLength");
+    var kBuffer = Symbol("kBuffer");
+    var kLength = Symbol("kLength");
     var PerMessageDeflate = class {
       /** @type {import('node:zlib').InflateRaw} */
       #inflate;
@@ -25237,8 +25233,8 @@ var require_websocket = __commonJS({
     var { SendQueue } = require_sender();
     var { WebsocketFrameSend } = require_frame();
     var { channels } = require_diagnostics();
-    var kRef = /* @__PURE__ */ Symbol.for("nodejs.ref");
-    var kUnref = /* @__PURE__ */ Symbol.for("nodejs.unref");
+    var kRef = Symbol.for("nodejs.ref");
+    var kUnref = Symbol.for("nodejs.unref");
     function getSocketAddress(socket) {
       if (typeof socket?.address === "function") {
         return socket.address();
@@ -27231,7 +27227,7 @@ async function openSocks5Tunnel(proxy, host, port) {
 }
 function buildSocksDispatcher(proxy) {
   return new import_undici.Agent({
-    connect: ((opts, callback) => {
+    connect: (opts, callback) => {
       const host = String(opts.hostname ?? opts.host ?? "");
       const port = Number(opts.port ?? 443);
       if (host.length === 0) {
@@ -27243,7 +27239,7 @@ function buildSocksDispatcher(proxy) {
       }).catch((error) => {
         callback(error, void 0);
       });
-    })
+    }
   });
 }
 
@@ -29098,6 +29094,20 @@ var CODEARTS_BENEFIT_CACHE_FILENAME = "codearts_benefit_models.json";
 var CODEARTS_BENEFIT_FALLBACK = ["glm-5.3-flash", "deepseek-v4.1-flash"];
 var FETCH_TIMEOUT_MS = 1e4;
 var MODEL_REFRESH_INTERVAL_MS = 2 * 36e5;
+function positiveTokenCount(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : void 0;
+}
+function readCapabilityFlag(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0) return false;
+  if (typeof value === "string") {
+    const text = value.trim().toLowerCase();
+    if (text === "true" || text === "1") return true;
+    if (text === "false" || text === "0") return false;
+  }
+  return void 0;
+}
 var memoryCache;
 var benefitMemoryCache;
 function normalizeModelId(id) {
@@ -29119,7 +29129,18 @@ function parseModelInfo(m, seen, normalizeVersionSuffix = true) {
   const name2 = typeof rawName === "string" && rawName.length > 0 ? normalizeVersionSuffix ? normalizeModelId(rawName) : rawName : id;
   if (seen.has(id)) return void 0;
   seen.add(id);
-  return { id, name: name2 };
+  const model = { id, name: name2 };
+  const contextWindow = positiveTokenCount(m["context_window"]);
+  if (contextWindow !== void 0) model.contextWindow = contextWindow;
+  const maxTokens = positiveTokenCount(m["max_tokens"]);
+  if (maxTokens !== void 0) model.maxTokens = maxTokens;
+  const supportsImages = readCapabilityFlag(m["supports_images"]);
+  if (supportsImages !== void 0) model.supportsImages = supportsImages;
+  const description = m["model_desc"];
+  if (typeof description === "string" && description.trim().length > 0) {
+    model.description = description.trim().slice(0, 200);
+  }
+  return model;
 }
 function extractJsonArray(text, path6) {
   try {
@@ -30032,12 +30053,13 @@ function applyModelSettings(catalog, settings) {
     const override = overrideById.get(id);
     const contextWindow = override?.contextWindow ?? row.contextWindow;
     const maxOutput = override?.maxOutput ?? row.maxOutput;
+    const baseModalities = Array.isArray(row.inputModalities) && row.inputModalities.length > 0 ? normalizeModalities(row.inputModalities) : ["text"];
     out.push({
       id,
       name: override?.name ?? String(row.name ?? id),
       ...contextWindow !== void 0 ? { contextWindow } : {},
       ...maxOutput !== void 0 ? { maxOutput } : {},
-      inputModalities: override?.inputModalities ?? ["text"]
+      inputModalities: override?.inputModalities ?? baseModalities
     });
   }
   for (const override of settings.overrides) {
@@ -30083,7 +30105,8 @@ function diffModelSettings(catalog, submitted, removedIds = []) {
       diff.contextWindow = row.contextWindow;
     }
     if (row.maxOutput !== void 0 && row.maxOutput !== base.maxOutput) diff.maxOutput = row.maxOutput;
-    if (row.inputModalities !== void 0 && !sameModalities(row.inputModalities, ["text"])) {
+    const baseModalities = Array.isArray(base.inputModalities) && base.inputModalities.length > 0 ? normalizeModalities(base.inputModalities) : ["text"];
+    if (row.inputModalities !== void 0 && !sameModalities(row.inputModalities, baseModalities)) {
       diff.inputModalities = row.inputModalities;
     }
     if (Object.keys(diff).length > 1) overrides.push(diff);
@@ -30458,8 +30481,6 @@ var FileDeadModelStore = class {
     this.path = path6;
     this.logger = logger2;
   }
-  path;
-  logger;
   kind = "file";
   load() {
     try {
@@ -30569,7 +30590,7 @@ function ownerOf(ids, candidate) {
   return typeof candidate === "string" && ids.includes(candidate) ? candidate : ids[0];
 }
 function trackStream(provider, inner, modelId) {
-  return (async function* tracked() {
+  return async function* tracked() {
     try {
       yield* inner;
     } catch (error) {
@@ -30578,7 +30599,7 @@ function trackStream(provider, inner, modelId) {
       }
       throw error;
     }
-  })();
+  }();
 }
 function withDeadModelPruning(providers, adapter) {
   const ids = providers.filter((id) => typeof id === "string" && id.length > 0);
@@ -30700,7 +30721,7 @@ function recordTokenUsage(entry) {
 }
 
 // src/openai-gateway/channel.ts
-var GATEWAY_CHANNEL_MARK = /* @__PURE__ */ Symbol("dsh.openai-gateway.channel");
+var GATEWAY_CHANNEL_MARK = Symbol("dsh.openai-gateway.channel");
 function channelOfOptions(options) {
   return typeof options === "object" && options !== null && options[GATEWAY_CHANNEL_MARK] === true ? "gateway" : "direct";
 }
@@ -31278,7 +31299,6 @@ var CodeArtsAdapter = class extends LlmAdapter {
     this.chatId = options.chatId ?? crypto.randomUUID().replace(/-/g, "");
     this.sessionId = options.sessionId ?? crypto.randomUUID().replace(/-/g, "");
   }
-  options;
   fetchImpl;
   chatId;
   sessionId;
@@ -31346,7 +31366,7 @@ var CodeArtsAdapter = class extends LlmAdapter {
    */
   setRemoteModels(models) {
     if (models.length === 0) return;
-    this.remoteModels = models.map((m) => ({ id: m.id, name: m.name }));
+    this.remoteModels = models.map((m) => ({ ...m }));
     this.remoteModelsAt = Date.now();
     setMemoryCache(this.remoteModels);
     saveModelsCache(this.remoteModels);
@@ -31397,11 +31417,27 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const source = this.remoteModels ?? DEFAULT_MODELS.map((id) => ({ id, name: id }));
     return this.catalogFrom(source);
   }
-  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口与已验证的输出上限，形成目录行。 */
+  /**
+   * 把适配器内部的行补上目录下发的能力值，形成目录行。
+   *
+   * 取数优先级（2026-11-17 用户要求「重新获取」而不是沿用少见更新的硬编码表）：
+   * 远端目录的 `context_window` / `max_tokens` / `supports_images` 优先；
+   * 目录没给能力的行（`gateway/config` 的 benefit 模型、静态兜底行）才回退
+   * 本地 `CONTEXT_WINDOWS` 与经实测验证的 `DEFAULT_MAX_OUTPUT_TOKENS`。
+   */
   catalogFrom(rows) {
     return rows.map((row) => {
-      const contextWindow = CONTEXT_WINDOWS.get(row.id);
-      return contextWindow === void 0 ? { id: row.id, name: row.name, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS } : { id: row.id, name: row.name, contextWindow, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS };
+      const remote = this.remoteModels?.find((m) => m.id === row.id);
+      const contextWindow = remote?.contextWindow ?? CONTEXT_WINDOWS.get(row.id);
+      const maxOutput = remote?.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
+      const inputModalities = remote?.supportsImages === true ? ["text", "image"] : void 0;
+      return {
+        id: row.id,
+        name: row.name,
+        ...contextWindow === void 0 ? {} : { contextWindow },
+        maxOutput,
+        ...inputModalities === void 0 ? {} : { inputModalities }
+      };
     });
   }
   /** 某个模型应用覆盖后的有效行；不在目录里时返回 undefined。 */
@@ -31416,15 +31452,16 @@ var CodeArtsAdapter = class extends LlmAdapter {
     const override = this.effectiveModel(model);
     const remoteModel = this.remoteModels?.find((m) => m.id === model);
     const name2 = override?.name ?? remoteModel?.name ?? model;
-    const contextWindow = override?.contextWindow ?? CONTEXT_WINDOWS.get(model);
+    const contextWindow = override?.contextWindow ?? remoteModel?.contextWindow ?? CONTEXT_WINDOWS.get(model);
     const resolved = {
       provider,
       id: model,
       name: name2,
-      inputModalities: override?.inputModalities ?? ["text"]
+      inputModalities: override?.inputModalities ?? (remoteModel?.supportsImages === true ? ["text", "image"] : ["text"])
     };
     if (contextWindow !== void 0) resolved.context = { contextWindow };
     if (override?.maxOutput !== void 0) resolved.defaultMaxTokens = override.maxOutput;
+    else if (remoteModel?.maxTokens !== void 0) resolved.defaultMaxTokens = remoteModel.maxTokens;
     resolved.reasoning = {
       efforts: [
         { id: ReasoningEffortId("on"), name: "\u5F00\u542F" },
@@ -33005,19 +33042,21 @@ function allocateUsed(grants, sample) {
     const byPriority = (a.priority ?? 3) - (b.priority ?? 3);
     return byPriority !== 0 ? byPriority : a.at - b.at;
   });
+  const officialCycleEnd = typeof sample.cycleEnd === "string" ? sample.cycleEnd : "";
   let remainingUsed = Math.max(0, sample.used);
   const rows = [];
   for (const grant of cycle) {
     const consumed = Math.min(grant.amount, remainingUsed);
     remainingUsed = round2(remainingUsed - consumed);
     const remain = round2(grant.amount - consumed);
+    const exactDate = officialCycleEnd !== "" ? officialCycleEnd : grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "";
     rows.push({
       ...grant,
       used: round2(consumed),
       remain,
-      expireDate: grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "",
+      expireDate: grant.expireSource === "exact" ? exactDate : grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "",
       expireExact: grant.expireSource === "exact",
-      expireLabel: grant.expireSource === "exact" ? grant.expireAt > 0 ? isoDateOf(grant.expireAt) : "\u2014" : grant.expireSource === "before-cycle-end" ? `< ${sample.cycleEnd || "?"}` : "\u2014"
+      expireLabel: grant.expireSource === "exact" ? exactDate !== "" ? exactDate : "\u2014" : grant.expireSource === "before-cycle-end" ? `< ${sample.cycleEnd || "?"}` : "\u2014"
     });
   }
   return rows;

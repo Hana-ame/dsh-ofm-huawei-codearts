@@ -32,7 +32,7 @@ import path from 'node:path'
 
 /**
  * @typedef {'text' | 'image'} InputModality
- * @typedef {{ id: string, name: string, contextWindow?: number, maxOutput?: number }} CatalogModel
+ * @typedef {{ id: string, name: string, contextWindow?: number, maxOutput?: number, inputModalities?: InputModality[] }} CatalogModel
  * @typedef {{ id: string, name: string, contextWindow?: number, maxOutput?: number, inputModalities: InputModality[] }} EffectiveModel
  * @typedef {{ id: string, name?: string, contextWindow?: number, maxOutput?: number, inputModalities?: InputModality[] }} ModelOverride
  * @typedef {{ version: 1, overrides: ModelOverride[], removed: string[], updatedAt: string }} ModelSettings
@@ -218,12 +218,17 @@ export function applyModelSettings(catalog, settings) {
     const override = overrideById.get(id)
     const contextWindow = override?.contextWindow ?? row.contextWindow
     const maxOutput = override?.maxOutput ?? row.maxOutput
+    // 能力默认值来自目录（2026-11-17：目录下发的 supports_images 决定默认
+    // 是否带 image；旧版目录没有该字段时才回退纯文本）。
+    const baseModalities = Array.isArray(row.inputModalities) && row.inputModalities.length > 0
+      ? normalizeModalities(row.inputModalities)
+      : ['text']
     out.push({
       id,
       name: override?.name ?? String(row.name ?? id),
       ...(contextWindow !== undefined ? { contextWindow } : {}),
       ...(maxOutput !== undefined ? { maxOutput } : {}),
-      inputModalities: override?.inputModalities ?? ['text'],
+      inputModalities: override?.inputModalities ?? baseModalities,
     })
   }
   for (const override of settings.overrides) {
@@ -292,7 +297,10 @@ export function diffModelSettings(catalog, submitted, removedIds = []) {
       diff.contextWindow = row.contextWindow
     }
     if (row.maxOutput !== undefined && row.maxOutput !== base.maxOutput) diff.maxOutput = row.maxOutput
-    if (row.inputModalities !== undefined && !sameModalities(row.inputModalities, ['text'])) {
+    const baseModalities = Array.isArray(base.inputModalities) && base.inputModalities.length > 0
+      ? normalizeModalities(base.inputModalities)
+      : ['text']
+    if (row.inputModalities !== undefined && !sameModalities(row.inputModalities, baseModalities)) {
       diff.inputModalities = row.inputModalities
     }
     if (Object.keys(diff).length > 1) overrides.push(diff)

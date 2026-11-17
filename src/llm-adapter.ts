@@ -16,6 +16,7 @@ import {
   saveModelsCache,
   setMemoryCache,
 } from './models.js'
+import type { RemoteModel } from './models.js'
 import { normalizeHarnessMessages } from './message-shape.js'
 import { userContentOf } from './image-projection.js'
 import {
@@ -23,12 +24,13 @@ import {
   cachedModelSettings,
 } from './model-settings.js'
 
-/** 目录行：远端/静态表提供 id + name，已知窗口的再补 contextWindow。 */
+/** 目录行：远端/静态表提供 id + name，有能力字段的再补上下文窗口/输出上限/图片。 */
 interface CatalogModel {
   id: string
   name: string
   contextWindow?: number
   maxOutput?: number
+  inputModalities?: readonly ('text' | 'image')[]
 }
 import { directFetch } from './direct-fetch.js'
 import { signRequestHuawei } from './sign.js'
@@ -135,7 +137,7 @@ export interface CodeArtsAdapterOptions {
   resolveCredential: () => Promise<CodeArtsCredential | undefined>
   refresh: () => Promise<void>
   /** 动态拉取远端模型列表；失败时调用方回退到静态列表。 */
-  fetchRemoteModels?: () => Promise<Array<{ id: string; name: string }>>
+  fetchRemoteModels?: () => Promise<Array<RemoteModel>>
   fetchImpl?: typeof fetch
   chatId?: string
   sessionId?: string
@@ -1027,7 +1029,7 @@ export class CodeArtsAdapter extends LlmAdapter {
   }
 
   /** 动态模型缓存（懒加载拉取后填充；之后由定时刷新覆盖）。 */
-  private remoteModels: Array<{ id: string; name: string }> | undefined
+  private remoteModels: RemoteModel[] | undefined
 
   /** 最近一次**成功**取到远端目录的时刻（ms）：过了刷新窗口才允许再拉。 */
   private remoteModelsAt = 0
@@ -1077,9 +1079,9 @@ export class CodeArtsAdapter extends LlmAdapter {
    *
    * 空数组不覆盖（与 `ensureRemoteModels` 的「空 = 没拿到」口径一致）。
    */
-  setRemoteModels(models: readonly { id: string; name: string }[]): void {
+  setRemoteModels(models: readonly RemoteModel[]): void {
     if (models.length === 0) return
-    this.remoteModels = models.map((m) => ({ id: m.id, name: m.name }))
+    this.remoteModels = models.map((m) => ({ ...m }))
     this.remoteModelsAt = Date.now()
     setMemoryCache(this.remoteModels)
     saveModelsCache(this.remoteModels)
@@ -1168,13 +1170,29 @@ export class CodeArtsAdapter extends LlmAdapter {
     return this.catalogFrom(source)
   }
 
-  /** 把适配器内部的 `{id,name}` 行补上已知上下文窗口与已验证的输出上限，形成目录行。 */
+  /**
+   * 把适配器内部的行补上目录下发的能力值，形成目录行。
+   *
+   * 取数优先级（2026-11-17 用户要求「重新获取」而不是沿用少见更新的硬编码表）：
+   * 远端目录的 `context_window` / `max_tokens` / `supports_images` 优先；
+   * 目录没给能力的行（`gateway/config` 的 benefit 模型、静态兜底行）才回退
+   * 本地 `CONTEXT_WINDOWS` 与经实测验证的 `DEFAULT_MAX_OUTPUT_TOKENS`。
+   */
   private catalogFrom(rows: readonly { id: string; name: string }[]): CatalogModel[] {
     return rows.map((row) => {
-      const contextWindow = CONTEXT_WINDOWS.get(row.id)
-      return contextWindow === undefined
-        ? { id: row.id, name: row.name, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS }
-        : { id: row.id, name: row.name, contextWindow, maxOutput: DEFAULT_MAX_OUTPUT_TOKENS }
+      const remote = this.remoteModels?.find((m) => m.id === row.id)
+      const contextWindow = remote?.contextWindow ?? CONTEXT_WINDOWS.get(row.id)
+      const maxOutput = remote?.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+      const inputModalities = remote?.supportsImages === true
+        ? (['text', 'image'] as const)
+        : undefined
+      return {
+        id: row.id,
+        name: row.name,
+        ...(contextWindow === undefined ? {} : { contextWindow }),
+        maxOutput,
+        ...(inputModalities === undefined ? {} : { inputModalities }),
+      }
     })
   }
 
@@ -1191,15 +1209,20 @@ export class CodeArtsAdapter extends LlmAdapter {
     const override = this.effectiveModel(model)
     const remoteModel = this.remoteModels?.find((m) => m.id === model)
     const name = override?.name ?? remoteModel?.name ?? model
-    const contextWindow = override?.contextWindow ?? CONTEXT_WINDOWS.get(model)
+    // 能力值的来源优先级与 catalogFrom 一致：设置页覆盖 > 目录下发 > 本地能力表。
+    const contextWindow = override?.contextWindow
+      ?? remoteModel?.contextWindow
+      ?? CONTEXT_WINDOWS.get(model)
     const resolved: LlmResolvedModelInfo = {
       provider,
       id: model,
       name,
-      inputModalities: override?.inputModalities ?? ['text'],
+      inputModalities: override?.inputModalities
+        ?? (remoteModel?.supportsImages === true ? ['text', 'image'] : ['text']),
     }
     if (contextWindow !== undefined) resolved.context = { contextWindow }
     if (override?.maxOutput !== undefined) resolved.defaultMaxTokens = override.maxOutput
+    else if (remoteModel?.maxTokens !== undefined) resolved.defaultMaxTokens = remoteModel.maxTokens
     // 思考开关（实测，2026-09-29）：本网关**唯一**真正生效的思考控制是
     // 顶层 `thinking.type`。`reasoning_effort`（含 low/high/none/minimal）与
     // 嵌套 `reasoning.effort` 都被服务端接受但**完全无效果**（判据为服务端

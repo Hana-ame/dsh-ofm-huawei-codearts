@@ -128,3 +128,39 @@ test('cachedModelSettings follows the file mtime', () => {
   }, file)
   assert.deepEqual(cachedModelSettings(file).overrides.map(o => o.id), ['glm-5.2'])
 })
+test('目录下发的图片能力成为默认模态，且与目录一致时不落覆盖', () => {
+  const catalog = [
+    { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', contextWindow: 1048576, maxOutput: 65536, inputModalities: ['text', 'image'] },
+    { id: 'glm-5.2', name: 'GLM-5.2', contextWindow: 202752, maxOutput: 65536 },
+  ]
+  const empty = { version: 1, overrides: [], removed: [], updatedAt: '' }
+  const effective = applyModelSettings(catalog, empty)
+  assert.deepEqual(effective[0].inputModalities, ['text', 'image'])
+  assert.deepEqual(effective[1].inputModalities, ['text'])
+
+  const submitted = [
+    { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', contextWindow: 1048576, maxOutput: 65536, inputModalities: ['text', 'image'] },
+    { id: 'glm-5.2', name: 'GLM-5.2', contextWindow: 202752, maxOutput: 65536, inputModalities: ['text'] },
+  ]
+  // 原样保存 = 与目录一致 ⇒ 不落任何覆盖行（上游更新继续自动跟随）
+  assert.deepEqual(diffModelSettings(catalog, submitted, []).overrides, [])
+
+  // 用户主动取消图片能力 ⇒ 只记模态差异
+  submitted[0].inputModalities = ['text']
+  assert.deepEqual(diffModelSettings(catalog, submitted, []).overrides, [
+    { id: 'glm-5.3-flash', inputModalities: ['text'] },
+  ])
+})
+
+test('覆盖表里的模态优先于目录默认值', () => {
+  const catalog = [
+    { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', inputModalities: ['text'] },
+  ]
+  const settings = {
+    version: 1,
+    overrides: [{ id: 'glm-5.3-flash', inputModalities: ['text', 'image'] }],
+    removed: [],
+    updatedAt: '',
+  }
+  assert.deepEqual(applyModelSettings(catalog, settings)[0].inputModalities, ['text', 'image'])
+})

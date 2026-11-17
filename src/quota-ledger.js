@@ -594,20 +594,30 @@ export function allocateUsed(grants, sample) {
       return byPriority !== 0 ? byPriority : a.at - b.at
     })
 
+  // 官方 end_date 是「含当天的周期末」（当天 24:00 清零）。`cycleEndMsOf`
+  // 返回的是次日 00:00 那一刻，直接按 UTC+8 格式化会显示成 end_date + 1 天
+  // （2026-11-17 实测：end_date=2026-12-08 却显示 2026-12-09，与「精确 =
+  // 官方 end_date」的说明自相矛盾）。展示日期一律回写官方 end_date 字符串。
+  const officialCycleEnd = typeof sample.cycleEnd === 'string' ? sample.cycleEnd : ''
   let remainingUsed = Math.max(0, sample.used)
   const rows = []
   for (const grant of cycle) {
     const consumed = Math.min(grant.amount, remainingUsed)
     remainingUsed = round2(remainingUsed - consumed)
     const remain = round2(grant.amount - consumed)
+    const exactDate = officialCycleEnd !== ''
+      ? officialCycleEnd
+      : (grant.expireAt > 0 ? isoDateOf(grant.expireAt) : '')
     rows.push({
       ...grant,
       used: round2(consumed),
       remain,
-      expireDate: grant.expireAt > 0 ? isoDateOf(grant.expireAt) : '',
+      expireDate: grant.expireSource === 'exact'
+        ? exactDate
+        : (grant.expireAt > 0 ? isoDateOf(grant.expireAt) : ''),
       expireExact: grant.expireSource === 'exact',
       expireLabel: grant.expireSource === 'exact'
-        ? (grant.expireAt > 0 ? isoDateOf(grant.expireAt) : '—')
+        ? (exactDate !== '' ? exactDate : '—')
         : (grant.expireSource === 'before-cycle-end'
           ? `< ${sample.cycleEnd || '?'}`
           : '—'),

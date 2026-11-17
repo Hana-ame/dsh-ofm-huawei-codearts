@@ -348,3 +348,32 @@ test('balance 路由下发 expiring，且账本异常不影响余额', async () 
   const without = await invoke(base)
   assert.equal(without.payload.expiring, null)
 })
+
+test('「精确」行的截止日期回写官方 end_date（不允许显示成次日 00:00）', () => {
+  const projection = projectExpiring(bookWith(REAL), { limit: 20, nowMs: T1 })
+  const exact = projection.rows.filter(row => row.expireExact)
+  assert.ok(exact.length > 0, '至少要有一行标「精确」')
+  for (const row of exact) {
+    // 2026-11-17 实际缺陷：end_date=2026-12-08，界面却显示 2026-12-09
+    assert.equal(row.expireDate, NE, `精确行截止日应为官方 end_date=${NE}`)
+    assert.equal(row.expireLabel, NE)
+  }
+  // 推算行继续标「< 周期末」，不得伪装成精确日期
+  for (const row of projection.rows.filter(row => !row.expireExact)) {
+    assert.ok(row.expireLabel.startsWith('<'), '推算行的截止日必须是「< end_date」形态')
+  }
+})
+
+test('精确行出现在 end_date 之后的零个观测点：不会写出 NE+1 天', () => {
+  // 直接构造一个 end_date 当月最后一天的周期，确认不会跨月跑到下一天
+  const balance = balanceOf({
+    cycle: { startDate: '2026-11-30', endDate: '2026-12-31' },
+    total: { amount: 1100, used: 100, remain: 1000, expiring: 300 },
+    basic: { amount: 500, used: 0, remain: 500, expiring: 0 },
+    bonus: { amount: 600, used: 100, remain: 500, expiring: 300 },
+  })
+  const projection = projectExpiring(bookWith(balance), { limit: 20, nowMs: T1 })
+  for (const row of projection.rows.filter(row => row.expireExact)) {
+    assert.equal(row.expireDate, '2026-12-31')
+  }
+})
