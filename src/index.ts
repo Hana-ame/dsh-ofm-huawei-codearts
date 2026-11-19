@@ -187,16 +187,34 @@ async function credentialByRef(ctx: any, ref: string): Promise<CodeArtsCredentia
   }
 }
 
-/** 刷新指定账号的凭据并返回刷新后的凭据；刷新失败返回 undefined。 */
+/**
+ * 刷新指定账号的凭据并返回刷新后的凭据；刷新失败返回 undefined。
+ *
+ * ⚠️ **`force` 只能用于「服务端已经明确说令牌失效」的反应式路径**
+ * （余额查询撞 APIG.0602、签到撞过期、LLM 请求 401/403），**绝不能用在启动时**。
+ *
+ * 真实缺陷（2026-11-19，refresh_token 被烧两次）：
+ * 启动首轮曾无条件 `force: true`，于是**每启动一个 DSH 进程就消耗一把一次性
+ * refresh_token**。单实例时写回自己那份文件、无害；但只要有第二个实例从
+ * 同一份凭据**拷贝/硬链**出一个 DSH_HOME（本机当天做了两次：08:30 的
+ * `rsync --link-dest` 复制、12:26 的 `cp -a` 复制），第二个实例启动即刷新的
+ * 那一把会立刻在服务端作废旧 token，而**真宿主那份文件里仍留着已作废的旧
+ * token** → 真宿主下一次续期必得 `STS5.1806 the refresh token has been used`，
+ * 只能重新登录。拷贝方写自己的文件，真宿主永远看不到新的那把。
+ *
+ * 现在的口径：默认不清 `force`（⇒ `shouldRefreshNow` 把关，距过期 ≤1h 才真刷），
+ * 启动只是「提前跑一次定时器」，不再无条件烧 token。
+ */
 async function refreshCredentialByRef(
   ctx: any,
   codeArtsAuth: CodeArtsAuth,
   ref: string,
+  options: { force?: boolean } = {},
 ): Promise<CodeArtsCredential | undefined> {
   try {
-    // 只在服务端已明确判令牌过期时调用，跳过本地 expires_at 预判（force）：
-    // 实测本地时间未到、服务端却已吊销的过期是真实存在的。
-    await codeArtsAuth.refreshAccountCredential(ref, undefined, undefined, { force: true })
+    // 反应式路径显式传 force（跳过 expires_at 预判：实测存在本地时间未到、
+    // 服务端却已吊销的过期）；启动/周期路径不传，由 shouldRefreshNow 把关。
+    await codeArtsAuth.refreshAccountCredential(ref, undefined, undefined, { force: options.force === true })
   } catch (error) {
     ctx.logger?.warn?.(`dsh-ofm-huawei-codearts: 刷新凭据失败（${ref}）: ${String(error)}`)
     return undefined
@@ -217,10 +235,15 @@ export function apply(ctx: any): void {
   const refCount = candidateCredentialRefs().length
   ctx.logger?.info?.(`dsh-ofm-huawei-codearts: 注册 codearts provider（磁盘上找到 ${refCount} 个凭据 ref）`)
 
-  // 启动首轮强制续期：STS 临时令牌寿命短（约 1 小时），进程启动时磁盘上的
-  // 凭据很可能已过期。上游 channel-pack 的调度器也是「启动即刷一轮」；本插件
-  // 精简掉了账号池调度器，这里做等价的最小实现（失败只告警，LLM 路径仍有
-  // 401 兜底，不影响 provider 注册）。
+  // 启动首轮续期：STS 临时令牌寿命短（约 2 小时），进程启动时磁盘上的凭据
+  // 可能已过期。上游 channel-pack 的调度器也是「启动即刷一轮」；本插件这里做
+  // 等价的最小实现（失败只告警，LLM 路径仍有 401 兜底，不影响 provider 注册）。
+  //
+  // ⚠️ **不带 force**（2026-11-19 修）：无条件强刷 = 每启动一个进程就消耗一把
+  // 一次性 refresh_token。第二个实例（拷贝/硬链出来的 DSH_HOME）启动即刷新会
+  // 在服务端作废旧 token，而真宿主文件里仍是旧的 → 真宿主必然 `STS5.1806
+  // the refresh token has been used`。不带 force 时 `shouldRefreshNow` 把关：
+  // 距过期 >1h 只做有效期对账、**不发请求**；真过期了才刷（这正是启动首轮要的）。
   for (const ref of candidateCredentialRefs()) {
     void refreshCredentialByRef(ctx, codeArtsAuth, ref)
   }
@@ -345,7 +368,8 @@ export function apply(ctx: any): void {
       const first = await claimCodeArtsDailyCheckin(credential, deps)
       if (first.kind !== 'failed' || !isCredentialExpiredMessage(first.message ?? '')) return first
       // 临时令牌过期：刷新一次再重试（同 LLM 适配器的 401 兜底策略）。
-      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref)
+      // 这是**反应式**路径（服务端已明确报过期），必须 force。
+      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref, { force: true })
       return refreshed === undefined ? first : claimCodeArtsDailyCheckin(refreshed, deps)
     },
     warn: (message: string) => ctx.logger?.warn?.(message),
@@ -361,7 +385,8 @@ export function apply(ctx: any): void {
       balanceDeps: {
         resolveAccount: () => resolveCodeArtsCredential(ctx),
         refreshAccount: async (account: { ref: string }) => {
-          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref)
+          // 反应式路径：balance-route 只在服务端报「令牌过期」时才调这里，必须 force。
+          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref, { force: true })
           return credential === undefined ? undefined : { ref: account.ref, credential }
         },
         fetchBalance: (credential: CodeArtsCredential) =>

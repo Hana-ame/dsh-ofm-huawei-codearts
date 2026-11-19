@@ -22472,7 +22472,7 @@ var require_fetch = __commonJS({
             fetchParams.controller.terminate(e);
           }
         };
-        requestBody = async function* () {
+        requestBody = (async function* () {
           try {
             for await (const bytes of request.body.stream) {
               yield* processBodyChunk(bytes);
@@ -22481,7 +22481,7 @@ var require_fetch = __commonJS({
           } catch (err) {
             processBodyError(err);
           }
-        }();
+        })();
       }
       try {
         const { body, status, statusText, headersList, socket } = await dispatch({ body: requestBody });
@@ -27227,7 +27227,7 @@ async function openSocks5Tunnel(proxy, host, port) {
 }
 function buildSocksDispatcher(proxy) {
   return new import_undici.Agent({
-    connect: (opts, callback) => {
+    connect: ((opts, callback) => {
       const host = String(opts.hostname ?? opts.host ?? "");
       const port = Number(opts.port ?? 443);
       if (host.length === 0) {
@@ -27239,7 +27239,7 @@ function buildSocksDispatcher(proxy) {
       }).catch((error) => {
         callback(error, void 0);
       });
-    }
+    })
   });
 }
 
@@ -30590,7 +30590,7 @@ function ownerOf(ids, candidate) {
   return typeof candidate === "string" && ids.includes(candidate) ? candidate : ids[0];
 }
 function trackStream(provider, inner, modelId) {
-  return async function* tracked() {
+  return (async function* tracked() {
     try {
       yield* inner;
     } catch (error) {
@@ -30599,7 +30599,7 @@ function trackStream(provider, inner, modelId) {
       }
       throw error;
     }
-  }();
+  })();
 }
 function withDeadModelPruning(providers, adapter) {
   const ids = providers.filter((id) => typeof id === "string" && id.length > 0);
@@ -33459,9 +33459,9 @@ async function credentialByRef(ctx, ref) {
     return void 0;
   }
 }
-async function refreshCredentialByRef(ctx, codeArtsAuth, ref) {
+async function refreshCredentialByRef(ctx, codeArtsAuth, ref, options = {}) {
   try {
-    await codeArtsAuth.refreshAccountCredential(ref, void 0, void 0, { force: true });
+    await codeArtsAuth.refreshAccountCredential(ref, void 0, void 0, { force: options.force === true });
   } catch (error) {
     ctx.logger?.warn?.(`dsh-ofm-huawei-codearts: \u5237\u65B0\u51ED\u636E\u5931\u8D25\uFF08${ref}\uFF09: ${String(error)}`);
     return void 0;
@@ -33569,7 +33569,7 @@ function apply(ctx) {
       const deps = { sign: signRequestHuawei, fetcher: transport.fetch };
       const first = await claimCodeArtsDailyCheckin(credential, deps);
       if (first.kind !== "failed" || !isCredentialExpiredMessage(first.message ?? "")) return first;
-      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref);
+      const refreshed = await refreshCredentialByRef(ctx, codeArtsAuth, ref, { force: true });
       return refreshed === void 0 ? first : claimCodeArtsDailyCheckin(refreshed, deps);
     },
     warn: (message2) => ctx.logger?.warn?.(message2)
@@ -33581,7 +33581,7 @@ function apply(ctx) {
       balanceDeps: {
         resolveAccount: () => resolveCodeArtsCredential(ctx),
         refreshAccount: async (account) => {
-          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref);
+          const credential = await refreshCredentialByRef(ctx, codeArtsAuth, account.ref, { force: true });
           return credential === void 0 ? void 0 : { ref: account.ref, credential };
         },
         fetchBalance: (credential) => fetchCodeArtsCreditBalance(credential, { sign: signRequestHuawei, fetcher: transport.fetch }),
