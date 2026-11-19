@@ -13,10 +13,15 @@ import { AccountPool } from './account-pool.js'
 import { SerialQueue } from './serial-queue.js'
 import {
   refreshAccountWithReconcile,
-  shouldRefreshNow,
   syncAccountExpiry,
   type ExpiryAccessors,
 } from './expiry-sync.js'
+import {
+  coordinateRefresh,
+  pickNewerCredential,
+  readSharedCredential,
+  writeSharedCredential,
+} from './shared-credential.js'
 
 /**
  * CodeArts 凭据是否具备**静默续期所需的全部材料**。
@@ -148,10 +153,16 @@ export class CodeArtsAuth extends Service {
    * 错误原文一变（说明状况变了）就重新告警。
    */
   private readonly terminalWarned = new Map<string, string>()
+  /**
+   * 共享凭据目录所用的环境（默认 process.env；测试可注入
+   * `CODEARTS_SHARED_CREDENTIAL_DIR` 指到临时目录）。
+   */
+  private readonly env: NodeJS.ProcessEnv
 
-  constructor(ctx: Context, options: { fetcher?: typeof fetch } = {}) {
+  constructor(ctx: Context, options: { fetcher?: typeof fetch; env?: NodeJS.ProcessEnv } = {}) {
     super(ctx, 'codeartsAuth')
     if (options.fetcher) this.fetchImpl = options.fetcher
+    this.env = options.env ?? process.env
   }
 
   /** 取（或建）某个凭据 ref 的续期队列。 */
@@ -164,15 +175,29 @@ export class CodeArtsAuth extends Service {
     return queue
   }
 
-  /** 读取某个凭据 ref 下的当前凭据；缺失或不可解析时 undefined。 */
+  /**
+   * 读取某个凭据 ref 下的当前凭据；缺失或不可解析时 undefined。
+   *
+   * **读也会采纳共享凭据**（2026-11-19 单 key 机制）：若
+   * `~/.dsh/codearts-shared/<ref>.json` 里有一把比本地更新的 token（他处续过），
+   * 直接返回它并顺手镜像回本地存储 —— 这样「设置页看到的」「推理用到的」
+   * 始终是同一把，不会因为本地文件陈旧而拿旧 token 撞 1806。
+   */
   private async readCredential(refName: string): Promise<CodeArtsCredential | undefined> {
     const resolved = await this.ctx.credentials.resolve(credentialRef(refName))
-    if (!resolved) return undefined
-    return parseCredential(resolved.value)
+    const local = resolved ? parseCredential(resolved.value) : undefined
+    const newer = pickNewerCredential(local, readSharedCredential(refName, this.env))
+    if (newer === undefined) return local
+    try {
+      await this.ctx.credentials.set(credentialRef(refName), JSON.stringify(newer))
+    } catch {
+      // 镜像失败不影响本次读取（用共享那份即可）
+    }
+    return newer
   }
 
   /**
-   * 判断两份凭据是否「同一份」（用于识别他处是否已经续过）。
+   * 判断两份凭据是否「同一份」。
    *
    * ⚠️ 必须**按值**比：`parseCredential` 每次都产生新对象，引用比较恒为「不相等」，
    * 会让幂等短路在每一轮都误判成「凭据已更新」。
@@ -234,6 +259,10 @@ export class CodeArtsAuth extends Service {
     const refName = options.refName ?? CODEARTS_CREDENTIAL_REF
     const ref = credentialRef(refName)
     await this.ctx.credentials.set(ref, flow.access)
+    // 登录产物同样写进跨实例共享真源（2026-11-19 单 key 机制）：
+    // 否则其他实例（及其 DSH_HOME 副本）还是只看到自己那份旧凭据。
+    const loggedIn = parseCredential(flow.access)
+    if (loggedIn !== undefined) writeSharedCredential(refName, loggedIn, this.env)
     // 目录是账号无关的，登录后顺手刷新一次。
     //
     // ⚠️ **必须捕获拒绝**：这是 fire-and-forget 调用，未处理的 rejection 会冒泡成
@@ -294,33 +323,30 @@ export class CodeArtsAuth extends Service {
   ): Promise<void> {
     await this.queueFor(refName).run(async () => {
       const ref = credentialRef(refName)
-      const credential = await this.readCredential(refName)
+      const logs: string[] = []
+      // 跨实例协调（2026-11-19）：锁内「采纳他处更新的 → 判要不要刷 → 真刷 → 双写」。
+      // 这样同一台机器上启动 N 个实例也只会消耗一把 refresh_token：
+      // 谁先拿锁谁刷，其余实例在锁内读到新 token 直接采纳，不发请求。
+      const result = await coordinateRefresh({
+        refName,
+        env: this.env,
+        force: options.force === true,
+        readLocal: async (name: string) => await this.readCredential(name),
+        writeLocal: async (credential: CodeArtsCredential) => {
+          await this.ctx.credentials.set(ref, JSON.stringify(credential))
+        },
+        networkRefresh: async (credential: CodeArtsCredential) => await this.refreshCredential(credential),
+        log: logs,
+      })
+      for (const line of logs) this.ctx.logger?.info?.(line)
+
+      const credential = result.credential
       if (credential === undefined) throw new Error('凭据未配置')
       if (!isCodeArtsRefreshable(credential)) throw new Error('无 refresh_token，请重新登录')
-      // 排队等锁期间，别处（另一条续期入口）可能已经把它续好了：
-      // 有效期内就直接对账返回，不再发第二次请求。
-      //
-      // `force`：服务端已明确判令牌过期（如 APIG.0602 security token has
-      // expired）时跳过本地预判——实测存在本地 expires_at 仍显示有效、服务端
-      // 却已判失效的情况（多实例/服务端提前吊销），此时不强制刷新会一直 400。
-      if (options.force !== true && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
-        await syncAccountExpiry({
-          pool,
-          provider: 'codearts',
-          credential,
-          accessors: CODEARTS_EXPIRY_ACCESSORS,
-          accountId,
-          tag: '[codearts]',
-          warn: (message) => this.ctx.logger?.warn?.(message),
-        })
-        return
-      }
-      const refreshed = await this.refreshCredential(credential)
-      await this.ctx.credentials.set(ref, JSON.stringify(refreshed))
       await syncAccountExpiry({
         pool,
         provider: 'codearts',
-        credential: refreshed,
+        credential,
         accessors: CODEARTS_EXPIRY_ACCESSORS,
         accountId,
         tag: '[codearts]',
@@ -345,15 +371,17 @@ export class CodeArtsAuth extends Service {
     credential: CodeArtsCredential,
   ): Promise<CodeArtsCredential> {
     return await this.queueFor(refName).run(async () => {
-      const latest = (await this.readCredential(refName)) ?? credential
-      if (!this.sameCredential(latest, credential)
-        && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(latest))) {
-        this.ctx.logger?.info?.(
-          `[codearts] 凭据已被他处续期，跳过本次续期请求（避免重复消费 refresh_token）`,
-        )
-        return latest
-      }
-      return await this.refreshCredential(latest)
+      const logs: string[] = []
+      const result = await coordinateRefresh({
+        refName,
+        env: this.env,
+        readLocal: async (name: string) => (await this.readCredential(name)) ?? credential,
+        networkRefresh: async (c: CodeArtsCredential) => await this.refreshCredential(c),
+        log: logs,
+      })
+      for (const line of logs) this.ctx.logger?.info?.(line)
+      if (result.credential === undefined) throw new Error('凭据未配置')
+      return result.credential
     })
   }
 

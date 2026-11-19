@@ -1139,14 +1139,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path6 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path7 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path6 && path6[0] !== "/") {
-          path6 = `/${path6}`;
+        if (path7 && path7[0] !== "/") {
+          path7 = `/${path7}`;
         }
-        return new URL(`${origin}${path6}`);
+        return new URL(`${origin}${path7}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -2017,9 +2017,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path7, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path6);
+          debugLog("sending request to %s %s%s", method, origin, path7);
         }
       );
     }
@@ -2037,14 +2037,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path6, origin },
+            request: { method, path: path7, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path6,
+            path7,
             statusCode
           );
         }
@@ -2053,23 +2053,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path7, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path6);
+          debugLog("trailers received from %s %s%s", method, origin, path7);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path6, origin },
+            request: { method, path: path7, origin },
             error
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path6,
+            path7,
             error.message
           );
         }
@@ -2224,7 +2224,7 @@ var require_request = __commonJS({
     };
     var Request2 = class {
       constructor(origin, {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -2241,11 +2241,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path6 !== "string") {
+        if (typeof path7 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path6[0] !== "/" && !(path6.startsWith("http://") || path6.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path7[0] !== "/" && !(path7.startsWith("http://") || path7.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path6)) {
+        } else if (invalidPathRegex.test(path7)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2320,7 +2320,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path6, query) : path6;
+        this.path = query ? serializePathWithQuery(path7, query) : path7;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" || method === "QUERY" : idempotent;
@@ -7406,7 +7406,7 @@ var require_client_h1 = __commonJS({
       }
     }
     function writeH1(client, request) {
-      const { method, path: path6, host, upgrade, blocking, reset } = request;
+      const { method, path: path7, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util3.isFormDataLike(body)) {
@@ -7482,7 +7482,7 @@ var require_client_h1 = __commonJS({
         socket[kBlocking] = true;
       }
       setTypeOfService(socket, request);
-      let header = `${method} ${path6} HTTP/1.1\r
+      let header = `${method} ${path7} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -8563,7 +8563,7 @@ var require_client_h2 = __commonJS({
       const headersTimeout = request.headersTimeout ?? client[kHeadersTimeout];
       const bodyTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path6, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path7, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util3.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
         return false;
@@ -8626,7 +8626,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path6;
+          headers[HTTP2_HEADER_PATH] = path7;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8648,7 +8648,7 @@ var require_client_h2 = __commonJS({
         setupUpgradeStream(stream, state);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path6;
+      headers[HTTP2_HEADER_PATH] = path7;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       let body = state.body;
@@ -11318,10 +11318,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path6 = "/",
+          path: path7 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path6;
+        opts.path = origin + path7;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -13586,20 +13586,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path6) {
-      if (typeof path6 !== "string") {
-        return path6;
+    function safeUrl(path7) {
+      if (typeof path7 !== "string") {
+        return path7;
       }
-      const pathSegments = path6.split("?", 3);
+      const pathSegments = path7.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path6;
+        return path7;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path6, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path6);
+    function matchKey(mockDispatch2, { path: path7, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path7);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -13626,8 +13626,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path6, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path6)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path6), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path7, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path7)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path7), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -13666,22 +13666,22 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path6) {
-      if (typeof path6 !== "string") {
-        return path6;
+    function removeTrailingSlash(path7) {
+      if (typeof path7 !== "string") {
+        return path7;
       }
-      while (path6.endsWith("/")) {
-        path6 = path6.slice(0, -1);
+      while (path7.endsWith("/")) {
+        path7 = path7.slice(0, -1);
       }
-      if (path6.length === 0) {
-        path6 = "/";
+      if (path7.length === 0) {
+        path7 = "/";
       }
-      return path6;
+      return path7;
     }
     function buildKey(opts) {
-      const { path: path6, method, body, headers, query } = opts;
+      const { path: path7, method, body, headers, query } = opts;
       return {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -14552,10 +14552,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path6, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
+          ({ method, path: path7, data: { statusCode }, persist: persist2, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path6,
+            Path: path7,
             "Status code": statusCode,
             Persistent: persist2 ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -14637,9 +14637,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path6, searchParams] = dispatchOpts.path.split("?");
+          const [path7, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path6}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path7}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -15055,12 +15055,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path6 = filePath || this.#snapshotPath;
-        if (!path6) {
+        const path7 = filePath || this.#snapshotPath;
+        if (!path7) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path6), "utf8");
+          const data = await readFile(resolve(path7), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -15074,7 +15074,7 @@ var require_snapshot_recorder = __commonJS({
           if (error.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path6}`, { cause: error });
+            throw new UndiciError(`Failed to load snapshots from ${path7}`, { cause: error });
           }
         }
       }
@@ -15085,11 +15085,11 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path6 = filePath || this.#snapshotPath;
-        if (!path6) {
+        const path7 = filePath || this.#snapshotPath;
+        if (!path7) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path6);
+        const resolvedPath = resolve(path7);
         await mkdir(dirname(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot2]) => ({
           hash,
@@ -15726,15 +15726,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util3.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path6 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path6}`;
+        const path7 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path7}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, removeContentHeaders, this.opts.origin !== origin, this.stripHeadersOnRedirect, this.stripHeadersOnCrossOriginRedirect);
-        this.opts.path = path6;
+        this.opts.path = path7;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -17562,10 +17562,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store2, cacheKey, path6) {
+    function deleteCachedUri(store2, cacheKey, path7) {
       deleteCachedValue(store2, {
         ...cacheKey,
-        path: path6
+        path: path7
       });
       for (let i = 0; i < util3.safeHTTPMethods.length; i++) {
         const method = util3.safeHTTPMethods[i];
@@ -17573,7 +17573,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store2, {
             ...cacheKey,
             method,
-            path: path6
+            path: path7
           });
         }
       }
@@ -17584,9 +17584,9 @@ var require_cache_handler = __commonJS({
       }
       const values = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i = 0; i < values.length; i++) {
-        const path6 = getSameOriginPath(cacheKey, values[i]);
-        if (path6 !== void 0) {
-          deleteCachedUri(store2, cacheKey, path6);
+        const path7 = getSameOriginPath(cacheKey, values[i]);
+        if (path7 !== void 0) {
+          deleteCachedUri(store2, cacheKey, path7);
         }
       }
     }
@@ -22583,13 +22583,13 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path6 = url.pathname + url.search;
+        const path7 = url.pathname + url.search;
         const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
         return dispatchWithProtocolPreference(body);
         function dispatchWithProtocolPreference(body2, allowH2) {
           return new Promise((resolve, reject) => agent.dispatch(
             {
-              path: hasTrailingQuestionMark ? `${path6}?` : path6,
+              path: hasTrailingQuestionMark ? `${path7}?` : path7,
               origin: url.origin,
               method: request.method,
               body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body2,
@@ -23501,9 +23501,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path6) {
-      for (let i = 0; i < path6.length; ++i) {
-        const code = path6.charCodeAt(i);
+    function validateCookiePath(path7) {
+      for (let i = 0; i < path7.length; ++i) {
+        const code = path7.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude non-ascii and DEL
         code === 59) {
@@ -26875,11 +26875,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path6 = opts.path;
+          let path7 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path6 = `/${path6}`;
+            path7 = `/${path7}`;
           }
-          url = new URL(util3.parseOrigin(url).origin + path6);
+          url = new URL(util3.parseOrigin(url).origin + path7);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -26989,9 +26989,9 @@ ${captureLines}` : capture.stack;
 });
 
 // src/index.ts
-import fs4 from "node:fs";
-import os3 from "node:os";
-import path5 from "node:path";
+import fs5 from "node:fs";
+import os4 from "node:os";
+import path6 from "node:path";
 import { credentialRef as credentialRef3 } from "@deepseek-ai/dsh-credentials";
 
 // src/direct-fetch.ts
@@ -29037,6 +29037,182 @@ async function refreshAccountWithReconcile(params) {
   return true;
 }
 
+// src/shared-credential.js
+import fs from "node:fs";
+import os from "node:os";
+import path2 from "node:path";
+function sharedCredentialDir(env = process.env) {
+  const override = String(env.CODEARTS_SHARED_CREDENTIAL_DIR ?? "").trim();
+  if (override.length > 0) return override;
+  const realHome = os.userInfo().homedir || os.homedir();
+  return path2.join(realHome, ".dsh", "codearts-shared");
+}
+function safeRefName(refName) {
+  return String(refName).replace(/[^A-Za-z0-9_.-]/g, "_");
+}
+function sharedCredentialFile(refName, env = process.env) {
+  return path2.join(sharedCredentialDir(env), `${safeRefName(refName)}.json`);
+}
+function normalizeSharedCredential(value) {
+  if (value === null || value === void 0) return void 0;
+  let parsed = value;
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return void 0;
+    }
+  }
+  if (parsed === null || typeof parsed !== "object") return void 0;
+  if (!parsed.access_key_id || !parsed.secret_access_key) return void 0;
+  return parsed;
+}
+function readSharedCredential(refName, env = process.env) {
+  try {
+    const text = fs.readFileSync(sharedCredentialFile(refName, env), "utf8");
+    return normalizeSharedCredential(text);
+  } catch {
+    return void 0;
+  }
+}
+function writeSharedCredential(refName, credential, env = process.env) {
+  const file = sharedCredentialFile(refName, env);
+  const temporary = `${file}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    fs.mkdirSync(path2.dirname(file), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify(credential), { mode: 384 });
+    fs.renameSync(temporary, file);
+    return true;
+  } catch {
+    try {
+      fs.rmSync(temporary, { force: true });
+    } catch {
+    }
+    return false;
+  }
+}
+var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function processAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  if (pid === process.pid) return true;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+async function withCredentialLock(refName, operation, options = {}) {
+  const env = options.env ?? process.env;
+  const waitMs = Number(options.waitMs ?? 3e4);
+  const lockPath = `${sharedCredentialFile(refName, env)}.lock`;
+  const deadline = Date.now() + waitMs;
+  let delay2 = 25;
+  fs.mkdirSync(path2.dirname(lockPath), { recursive: true });
+  for (; ; ) {
+    try {
+      const fd = fs.openSync(lockPath, "wx", 384);
+      try {
+        fs.writeFileSync(fd, `${process.pid}
+`);
+      } finally {
+        fs.closeSync(fd);
+      }
+      break;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      try {
+        const holder = Number.parseInt(fs.readFileSync(lockPath, "utf8").trim(), 10);
+        if (!processAlive(holder)) {
+          fs.rmSync(lockPath, { force: true });
+          continue;
+        }
+      } catch {
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`codearts: \u7B49\u5F85\u8DE8\u5B9E\u4F8B\u51ED\u636E\u9501\u8D85\u65F6\uFF08${lockPath}\uFF09`);
+      }
+      await sleep(delay2);
+      delay2 = Math.min(Math.round(delay2 * 1.6), 200);
+    }
+  }
+  try {
+    return await operation();
+  } finally {
+    try {
+      fs.rmSync(lockPath, { force: true });
+    } catch {
+    }
+  }
+}
+function expiresAtMsOf(credential) {
+  const parsed = credential?.expires_at ? Date.parse(credential.expires_at) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+function pickNewerCredential(current, candidate) {
+  if (candidate === void 0) return void 0;
+  if (current === void 0) return candidate;
+  const same = current.access_key_id === candidate.access_key_id && current.expires_at === candidate.expires_at && current.refresh_token === candidate.refresh_token;
+  if (same) return void 0;
+  const curExp = expiresAtMsOf(current);
+  const candExp = expiresAtMsOf(candidate);
+  if (Number.isFinite(candExp) && (!Number.isFinite(curExp) || candExp > curExp)) return candidate;
+  if (!Number.isFinite(candExp) && !Number.isFinite(curExp) && Boolean(candidate.refresh_token) && !current.refresh_token) return candidate;
+  return void 0;
+}
+function needsRefresh(credential, nowMs = Date.now(), leadMs = 36e5) {
+  const exp = expiresAtMsOf(credential);
+  if (!Number.isFinite(exp)) return true;
+  return exp - nowMs <= leadMs;
+}
+async function coordinateRefresh(params) {
+  const {
+    refName,
+    readLocal,
+    writeLocal,
+    networkRefresh,
+    force = false,
+    nowMs = Date.now(),
+    leadMs = 36e5,
+    env = process.env,
+    log = [],
+    waitMs
+  } = params;
+  return await withCredentialLock(refName, async () => {
+    const local = await readLocal(refName);
+    const shared = readSharedCredential(refName, env);
+    if (shared === void 0 && local !== void 0) {
+      writeSharedCredential(refName, local, env);
+      log.push(`[codearts] \u521D\u59CB\u5316\u5171\u4EAB\u51ED\u636E\u771F\u6E90\uFF08${refName}\uFF09`);
+    }
+    const newer = pickNewerCredential(local, shared);
+    let current = local;
+    let adopted = false;
+    if (newer !== void 0) {
+      if (typeof writeLocal === "function") await writeLocal(newer);
+      current = newer;
+      adopted = true;
+      log.push(`[codearts] \u91C7\u7EB3\u5171\u4EAB\u51ED\u636E\uFF08${refName}\uFF0C\u4ED6\u5904\u5DF2\u7EED\u671F\uFF09`);
+    }
+    if (current === void 0) return { credential: void 0, refreshed: false, adopted };
+    const stillUsable = Number.isFinite(expiresAtMsOf(current)) && expiresAtMsOf(current) - nowMs > 6e4;
+    if (!force && !needsRefresh(current, nowMs, leadMs)) {
+      return { credential: current, refreshed: false, adopted };
+    }
+    if (force && adopted && stillUsable) {
+      log.push(`[codearts] \u53CD\u5E94\u5F0F\u5237\u65B0\u547D\u4E2D\u5DF2\u91C7\u7EB3\u7684\u65B0\u51ED\u636E\uFF0C\u8DF3\u8FC7\u8BF7\u6C42\uFF08${refName}\uFF09`);
+      return { credential: current, refreshed: false, adopted };
+    }
+    if (typeof networkRefresh !== "function") {
+      return { credential: current, refreshed: false, adopted };
+    }
+    const refreshed = await networkRefresh(current);
+    writeSharedCredential(refName, refreshed, env);
+    if (typeof writeLocal === "function") await writeLocal(refreshed);
+    return { credential: refreshed, refreshed: true, adopted };
+  }, { env, waitMs });
+}
+
 // src/models.ts
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
@@ -29142,10 +29318,10 @@ function parseModelInfo(m, seen, normalizeVersionSuffix = true) {
   }
   return model;
 }
-function extractJsonArray(text, path6) {
+function extractJsonArray(text, path7) {
   try {
     let value = JSON.parse(text);
-    for (const key of path6) {
+    for (const key of path7) {
       if (typeof value !== "object" || value === null) return void 0;
       value = value[key];
     }
@@ -29236,14 +29412,14 @@ function benefitCachePath() {
   return dir === void 0 ? void 0 : `${dir}/${CODEARTS_BENEFIT_CACHE_FILENAME}`;
 }
 function saveModelsCache(models) {
-  const path6 = modelsCachePath();
-  if (!path6) return;
-  const dir = path6.slice(0, path6.lastIndexOf("/"));
+  const path7 = modelsCachePath();
+  if (!path7) return;
+  const dir = path7.slice(0, path7.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path6 + ".tmp";
+    const tmp = path7 + ".tmp";
     writeFileSync(tmp, JSON.stringify(models), "utf-8");
-    renameSync(tmp, path6);
+    renameSync(tmp, path7);
   } catch {
   }
 }
@@ -29251,23 +29427,23 @@ function setMemoryCache(models) {
   memoryCache = models;
 }
 function saveBenefitCache(ids) {
-  const path6 = benefitCachePath();
-  if (!path6) return;
-  const dir = path6.slice(0, path6.lastIndexOf("/"));
+  const path7 = benefitCachePath();
+  if (!path7) return;
+  const dir = path7.slice(0, path7.lastIndexOf("/"));
   try {
     mkdirSync(dir, { recursive: true });
-    const tmp = path6 + ".tmp";
+    const tmp = path7 + ".tmp";
     writeFileSync(tmp, JSON.stringify(ids), "utf-8");
-    renameSync(tmp, path6);
+    renameSync(tmp, path7);
   } catch {
   }
 }
 function loadBenefitCache() {
-  const path6 = benefitCachePath();
-  if (!path6) return void 0;
+  const path7 = benefitCachePath();
+  if (!path7) return void 0;
   try {
-    if (!existsSync(path6)) return void 0;
-    const text = readFileSync(path6, "utf-8");
+    if (!existsSync(path7)) return void 0;
+    const text = readFileSync(path7, "utf-8");
     const ids = JSON.parse(text);
     if (!Array.isArray(ids) || ids.length === 0) return void 0;
     return ids.filter((id) => typeof id === "string");
@@ -29336,9 +29512,15 @@ var CodeArtsAuth = class extends Service {
    * 错误原文一变（说明状况变了）就重新告警。
    */
   terminalWarned = /* @__PURE__ */ new Map();
+  /**
+   * 共享凭据目录所用的环境（默认 process.env；测试可注入
+   * `CODEARTS_SHARED_CREDENTIAL_DIR` 指到临时目录）。
+   */
+  env;
   constructor(ctx, options = {}) {
     super(ctx, "codeartsAuth");
     if (options.fetcher) this.fetchImpl = options.fetcher;
+    this.env = options.env ?? process.env;
   }
   /** 取（或建）某个凭据 ref 的续期队列。 */
   queueFor(refName) {
@@ -29349,14 +29531,27 @@ var CodeArtsAuth = class extends Service {
     }
     return queue;
   }
-  /** 读取某个凭据 ref 下的当前凭据；缺失或不可解析时 undefined。 */
+  /**
+   * 读取某个凭据 ref 下的当前凭据；缺失或不可解析时 undefined。
+   *
+   * **读也会采纳共享凭据**（2026-11-19 单 key 机制）：若
+   * `~/.dsh/codearts-shared/<ref>.json` 里有一把比本地更新的 token（他处续过），
+   * 直接返回它并顺手镜像回本地存储 —— 这样「设置页看到的」「推理用到的」
+   * 始终是同一把，不会因为本地文件陈旧而拿旧 token 撞 1806。
+   */
   async readCredential(refName) {
     const resolved = await this.ctx.credentials.resolve(credentialRef(refName));
-    if (!resolved) return void 0;
-    return parseCredential(resolved.value);
+    const local = resolved ? parseCredential(resolved.value) : void 0;
+    const newer = pickNewerCredential(local, readSharedCredential(refName, this.env));
+    if (newer === void 0) return local;
+    try {
+      await this.ctx.credentials.set(credentialRef(refName), JSON.stringify(newer));
+    } catch {
+    }
+    return newer;
   }
   /**
-   * 判断两份凭据是否「同一份」（用于识别他处是否已经续过）。
+   * 判断两份凭据是否「同一份」。
    *
    * ⚠️ 必须**按值**比：`parseCredential` 每次都产生新对象，引用比较恒为「不相等」，
    * 会让幂等短路在每一轮都误判成「凭据已更新」。
@@ -29405,6 +29600,8 @@ var CodeArtsAuth = class extends Service {
     const refName = options.refName ?? CODEARTS_CREDENTIAL_REF;
     const ref = credentialRef(refName);
     await this.ctx.credentials.set(ref, flow.access);
+    const loggedIn = parseCredential(flow.access);
+    if (loggedIn !== void 0) writeSharedCredential(refName, loggedIn, this.env);
     if (options.pool) {
       void this.refreshModels(options.pool).catch(() => {
       });
@@ -29454,27 +29651,26 @@ var CodeArtsAuth = class extends Service {
   async refreshAccountCredential(refName, pool, accountId, options = {}) {
     await this.queueFor(refName).run(async () => {
       const ref = credentialRef(refName);
-      const credential = await this.readCredential(refName);
+      const logs = [];
+      const result = await coordinateRefresh({
+        refName,
+        env: this.env,
+        force: options.force === true,
+        readLocal: async (name2) => await this.readCredential(name2),
+        writeLocal: async (credential2) => {
+          await this.ctx.credentials.set(ref, JSON.stringify(credential2));
+        },
+        networkRefresh: async (credential2) => await this.refreshCredential(credential2),
+        log: logs
+      });
+      for (const line of logs) this.ctx.logger?.info?.(line);
+      const credential = result.credential;
       if (credential === void 0) throw new Error("\u51ED\u636E\u672A\u914D\u7F6E");
       if (!isCodeArtsRefreshable(credential)) throw new Error("\u65E0 refresh_token\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55");
-      if (options.force !== true && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(credential))) {
-        await syncAccountExpiry({
-          pool,
-          provider: "codearts",
-          credential,
-          accessors: CODEARTS_EXPIRY_ACCESSORS,
-          accountId,
-          tag: "[codearts]",
-          warn: (message2) => this.ctx.logger?.warn?.(message2)
-        });
-        return;
-      }
-      const refreshed = await this.refreshCredential(credential);
-      await this.ctx.credentials.set(ref, JSON.stringify(refreshed));
       await syncAccountExpiry({
         pool,
         provider: "codearts",
-        credential: refreshed,
+        credential,
         accessors: CODEARTS_EXPIRY_ACCESSORS,
         accountId,
         tag: "[codearts]",
@@ -29495,14 +29691,17 @@ var CodeArtsAuth = class extends Service {
    */
   async refreshCredentialUnderLock(refName, credential) {
     return await this.queueFor(refName).run(async () => {
-      const latest = await this.readCredential(refName) ?? credential;
-      if (!this.sameCredential(latest, credential) && !shouldRefreshNow(CODEARTS_EXPIRY_ACCESSORS.expiresAtOf(latest))) {
-        this.ctx.logger?.info?.(
-          `[codearts] \u51ED\u636E\u5DF2\u88AB\u4ED6\u5904\u7EED\u671F\uFF0C\u8DF3\u8FC7\u672C\u6B21\u7EED\u671F\u8BF7\u6C42\uFF08\u907F\u514D\u91CD\u590D\u6D88\u8D39 refresh_token\uFF09`
-        );
-        return latest;
-      }
-      return await this.refreshCredential(latest);
+      const logs = [];
+      const result = await coordinateRefresh({
+        refName,
+        env: this.env,
+        readLocal: async (name2) => await this.readCredential(name2) ?? credential,
+        networkRefresh: async (c) => await this.refreshCredential(c),
+        log: logs
+      });
+      for (const line of logs) this.ctx.logger?.info?.(line);
+      if (result.credential === void 0) throw new Error("\u51ED\u636E\u672A\u914D\u7F6E");
+      return result.credential;
     });
   }
   /**
@@ -29940,11 +30139,11 @@ async function userContentOf(content, deps = {}) {
 }
 
 // src/model-settings.js
-import fs from "node:fs";
-import os from "node:os";
-import path2 from "node:path";
-var DSH_HOME_DIR = process.env.DSH_HOME ?? path2.join(os.homedir(), ".dsh");
-var DEFAULT_MODELS_FILE = path2.join(DSH_HOME_DIR, "dsh-ofm-huawei-codearts", "models.json");
+import fs2 from "node:fs";
+import os2 from "node:os";
+import path3 from "node:path";
+var DSH_HOME_DIR = process.env.DSH_HOME ?? path3.join(os2.homedir(), ".dsh");
+var DEFAULT_MODELS_FILE = path3.join(DSH_HOME_DIR, "dsh-ofm-huawei-codearts", "models.json");
 function modelsSettingsPath() {
   const fromEnv = String(process.env.CODEARTS_MODELS_FILE ?? "").trim();
   return fromEnv.length > 0 ? fromEnv : DEFAULT_MODELS_FILE;
@@ -29986,7 +30185,7 @@ function readModelSettings(file = modelsSettingsPath()) {
   try {
     const parsed = (
       /** @type {Record<string, unknown> | null} */
-      JSON.parse(fs.readFileSync(file, "utf8"))
+      JSON.parse(fs2.readFileSync(file, "utf8"))
     );
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return emptyModelSettings();
     const seen = /* @__PURE__ */ new Set();
@@ -30013,15 +30212,15 @@ function readModelSettings(file = modelsSettingsPath()) {
   }
 }
 function writeModelSettings(settings, file = modelsSettingsPath()) {
-  fs.mkdirSync(path2.dirname(file), { recursive: true });
+  fs2.mkdirSync(path3.dirname(file), { recursive: true });
   const temporary = `${file}.tmp-${process.pid}`;
-  fs.writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}
+  fs2.writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}
 `, { mode: 384 });
-  fs.renameSync(temporary, file);
+  fs2.renameSync(temporary, file);
 }
 function clearModelSettings(file = modelsSettingsPath()) {
   try {
-    fs.rmSync(file, { force: true });
+    fs2.rmSync(file, { force: true });
   } catch {
   }
 }
@@ -30029,7 +30228,7 @@ var cache;
 function cachedModelSettings(file = modelsSettingsPath()) {
   let mtimeMs = -1;
   try {
-    mtimeMs = fs.statSync(file).mtimeMs;
+    mtimeMs = fs2.statSync(file).mtimeMs;
   } catch {
     mtimeMs = -1;
   }
@@ -30477,8 +30676,8 @@ var MemoryDeadModelStore = class {
   }
 };
 var FileDeadModelStore = class {
-  constructor(path6, logger2) {
-    this.path = path6;
+  constructor(path7, logger2) {
+    this.path = path7;
     this.logger = logger2;
   }
   kind = "file";
@@ -32117,8 +32316,8 @@ function parseRateLimitError(body, currentModel, status) {
 }
 
 // src/auto-checkin.js
-import fs2 from "node:fs";
-import path3 from "node:path";
+import fs3 from "node:fs";
+import path4 from "node:path";
 var AUTO_CHECKIN_FILE = "auto-checkin.json";
 var AUTO_CHECKIN_SCHEMA = "dsh-codearts-auth/auto-checkin/v1";
 var AUTO_CHECKIN_DELAY_ENV = "DSH_CHANNEL_PACK_AUTO_CHECKIN_DELAY_MS";
@@ -32186,25 +32385,25 @@ function resolveAutoCheckinHome(ctx, env = process.env) {
   if (profileHome !== void 0) return profileHome;
   const envHome = env.DSH_HOME;
   if (typeof envHome === "string" && envHome.trim().length > 0) return envHome.trim();
-  return path3.join(process.env.HOME ?? "", ".dsh");
+  return path4.join(process.env.HOME ?? "", ".dsh");
 }
 function createFileAutoCheckinStore({ home, warn } = {}) {
-  const file = path3.join(home, "channel-pack", AUTO_CHECKIN_FILE);
+  const file = path4.join(home, "channel-pack", AUTO_CHECKIN_FILE);
   return {
     file,
     load() {
       try {
-        if (!fs2.existsSync(file)) return sanitizeAutoCheckin(void 0);
-        return sanitizeAutoCheckin(JSON.parse(fs2.readFileSync(file, "utf8")));
+        if (!fs3.existsSync(file)) return sanitizeAutoCheckin(void 0);
+        return sanitizeAutoCheckin(JSON.parse(fs3.readFileSync(file, "utf8")));
       } catch (error) {
         warn?.(`[auto-checkin] \u8BFB\u53D6 ${file} \u5931\u8D25\uFF0C\u6309\u9ED8\u8BA4\u8BBE\u7F6E\uFF08\u6253\u5F00\uFF09\u5904\u7406: ${String(error)}`);
         return sanitizeAutoCheckin(void 0);
       }
     },
     async save(doc) {
-      fs2.mkdirSync(path3.dirname(file), { recursive: true });
+      fs3.mkdirSync(path4.dirname(file), { recursive: true });
       const tmp = `${file}.tmp`;
-      fs2.writeFileSync(tmp, JSON.stringify({
+      fs3.writeFileSync(tmp, JSON.stringify({
         schema: AUTO_CHECKIN_SCHEMA,
         enabled: doc.enabled,
         lastDate: doc.lastDate,
@@ -32213,7 +32412,7 @@ function createFileAutoCheckinStore({ home, warn } = {}) {
         channels: doc.channels,
         dismissedRunAt: doc.dismissedRunAt
       }, null, 2), "utf8");
-      fs2.renameSync(tmp, file);
+      fs3.renameSync(tmp, file);
     }
   };
 }
@@ -32664,11 +32863,11 @@ function createAutoCheckin(deps) {
 }
 
 // src/quota-ledger.js
-import fs3 from "node:fs";
-import os2 from "node:os";
-import path4 from "node:path";
-var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path4.join(os2.homedir(), ".dsh");
-var DEFAULT_QUOTA_FILE = path4.join(DSH_HOME_DIR2, "dsh-ofm-huawei-codearts", "quota-buckets.json");
+import fs4 from "node:fs";
+import os3 from "node:os";
+import path5 from "node:path";
+var DSH_HOME_DIR2 = process.env.DSH_HOME ?? path5.join(os3.homedir(), ".dsh");
+var DEFAULT_QUOTA_FILE = path5.join(DSH_HOME_DIR2, "dsh-ofm-huawei-codearts", "quota-buckets.json");
 var QUOTA_BUCKETS_SCHEMA = "dsh-ofm-huawei-codearts/quota-buckets/v1";
 var MAX_SAMPLES = 400;
 var MAX_GRANTS = 200;
@@ -33096,18 +33295,18 @@ function trackExpiring(balance, { nowMs = Date.now(), limit = DEFAULT_EXPIRING_L
 }
 function readQuotaBook(file = quotaBucketsPath()) {
   try {
-    return sanitizeQuotaBook(JSON.parse(fs3.readFileSync(file, "utf8")));
+    return sanitizeQuotaBook(JSON.parse(fs4.readFileSync(file, "utf8")));
   } catch {
     return emptyQuotaBook();
   }
 }
 function writeQuotaBook(book, file = quotaBucketsPath()) {
   try {
-    fs3.mkdirSync(path4.dirname(file), { recursive: true });
+    fs4.mkdirSync(path5.dirname(file), { recursive: true });
     const temporary = `${file}.tmp-${process.pid}`;
-    fs3.writeFileSync(temporary, `${JSON.stringify(book, null, 2)}
+    fs4.writeFileSync(temporary, `${JSON.stringify(book, null, 2)}
 `, { mode: 384 });
-    fs3.renameSync(temporary, file);
+    fs4.renameSync(temporary, file);
     return true;
   } catch {
     return false;
@@ -33385,14 +33584,14 @@ function createAdminRoute(deps) {
 // src/index.ts
 var name = "dsh-ofm-huawei-codearts";
 var inject = ["llm", "credentials"];
-var DSH_HOME_DIR3 = process.env.DSH_HOME ?? path5.join(os3.homedir(), ".dsh");
-var CHANNEL_STATE_FILE = path5.join(DSH_HOME_DIR3, "channel-pack", "state.json");
-var CREDENTIAL_STORE_FILE = path5.join(DSH_HOME_DIR3, ".credentials.yaml");
+var DSH_HOME_DIR3 = process.env.DSH_HOME ?? path6.join(os4.homedir(), ".dsh");
+var CHANNEL_STATE_FILE = path6.join(DSH_HOME_DIR3, "channel-pack", "state.json");
+var CREDENTIAL_STORE_FILE = path6.join(DSH_HOME_DIR3, ".credentials.yaml");
 var LEGACY_CREDENTIAL_REF = "CODEARTS_ACCESS_TOKEN";
 var CATALOG_MIN_RETRY_MS = 5 * 6e4;
 function credentialRefsFromChannelState() {
   try {
-    const state = JSON.parse(fs4.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs5.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     return (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account) => String(account.credentialRef ?? "")).filter((ref) => ref.length > 0);
   } catch {
     return [];
@@ -33400,7 +33599,7 @@ function credentialRefsFromChannelState() {
 }
 function credentialRefsFromStore() {
   try {
-    const text = fs4.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
+    const text = fs5.readFileSync(CREDENTIAL_STORE_FILE, "utf8");
     return [...text.matchAll(/\bCODEARTS_ACCOUNT_[0-9A-Fa-f]{6,}\b/g)].map((match) => match[0]);
   } catch {
     return [];
@@ -33415,7 +33614,7 @@ function candidateCredentialRefs() {
 }
 function codeArtsAccounts() {
   try {
-    const state = JSON.parse(fs4.readFileSync(CHANNEL_STATE_FILE, "utf8"));
+    const state = JSON.parse(fs5.readFileSync(CHANNEL_STATE_FILE, "utf8"));
     const accounts = (state.accounts ?? []).filter((account) => account.provider === "codearts" && account.enabled !== false).map((account, index) => ({
       id: String(account.id ?? `codearts-${index + 1}`),
       nickname: String(account.nickname ?? ""),
@@ -33435,8 +33634,17 @@ async function resolveCodeArtsCredential(ctx) {
   for (const ref of candidateCredentialRefs()) {
     try {
       const resolved = await ctx.credentials.resolve(credentialRef3(ref));
-      if (!resolved?.value) continue;
-      const credential = JSON.parse(String(resolved.value));
+      const local = resolved?.value ? JSON.parse(String(resolved.value)) : void 0;
+      const shared = readSharedCredential(ref);
+      const newer = pickNewerCredential(local, shared);
+      const credential = newer ?? local;
+      if (credential === void 0) continue;
+      if (newer !== void 0) {
+        try {
+          await ctx.credentials.set(credentialRef3(ref), JSON.stringify(newer));
+        } catch {
+        }
+      }
       if (credential.access_key_id && credential.secret_access_key) {
         return { ref, credential };
       }
@@ -33451,8 +33659,17 @@ function primaryCredentialRef() {
 async function credentialByRef(ctx, ref) {
   try {
     const resolved = await ctx.credentials.resolve(credentialRef3(ref));
-    if (!resolved?.value) return void 0;
-    const credential = JSON.parse(String(resolved.value));
+    const local = resolved?.value ? JSON.parse(String(resolved.value)) : void 0;
+    const shared = readSharedCredential(ref);
+    const newer = pickNewerCredential(local, shared);
+    const credential = newer ?? local;
+    if (credential === void 0) return void 0;
+    if (newer !== void 0) {
+      try {
+        await ctx.credentials.set(credentialRef3(ref), JSON.stringify(newer));
+      } catch {
+      }
+    }
     if (!credential.access_key_id || !credential.secret_access_key) return void 0;
     return credential;
   } catch {

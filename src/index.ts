@@ -37,6 +37,7 @@ import { isCredentialExpiredMessage } from './balance-route.js'
 import { createAdminRoute } from './admin-route.js'
 import { trackExpiring } from './quota-ledger.js'
 import { modelsSettingsPath } from './model-settings.js'
+import { pickNewerCredential, readSharedCredential } from './shared-credential.js'
 import { fetchCodeArtsRemoteModels, MODEL_REFRESH_INTERVAL_MS } from './models.js'
 import {
   claimCodeArtsDailyCheckin,
@@ -155,8 +156,20 @@ async function resolveCodeArtsCredential(
   for (const ref of candidateCredentialRefs()) {
     try {
       const resolved = await ctx.credentials.resolve(credentialRef(ref))
-      if (!resolved?.value) continue
-      const credential = JSON.parse(String(resolved.value)) as CodeArtsCredential
+      const local = resolved?.value ? JSON.parse(String(resolved.value)) as CodeArtsCredential : undefined
+      // 跨实例单 key（2026-11-19）：共享真源里若有更新的一把，以它为准并镜像回本地，
+      // 避免本实例拿着陈旧 token 去撞 1806。
+      const shared = readSharedCredential(ref)
+      const newer = pickNewerCredential(local, shared)
+      const credential = newer ?? local
+      if (credential === undefined) continue
+      if (newer !== undefined) {
+        try {
+          await ctx.credentials.set(credentialRef(ref), JSON.stringify(newer))
+        } catch {
+          // 镜像失败不影响本次解析
+        }
+      }
       if (credential.access_key_id && credential.secret_access_key) {
         return { ref, credential }
       }
@@ -178,8 +191,18 @@ function primaryCredentialRef(): string {
 async function credentialByRef(ctx: any, ref: string): Promise<CodeArtsCredential | undefined> {
   try {
     const resolved = await ctx.credentials.resolve(credentialRef(ref))
-    if (!resolved?.value) return undefined
-    const credential = JSON.parse(String(resolved.value)) as CodeArtsCredential
+    const local = resolved?.value ? JSON.parse(String(resolved.value)) as CodeArtsCredential : undefined
+    const shared = readSharedCredential(ref)
+    const newer = pickNewerCredential(local, shared)
+    const credential = newer ?? local
+    if (credential === undefined) return undefined
+    if (newer !== undefined) {
+      try {
+        await ctx.credentials.set(credentialRef(ref), JSON.stringify(newer))
+      } catch {
+        // 镜像失败不影响本次解析
+      }
+    }
     if (!credential.access_key_id || !credential.secret_access_key) return undefined
     return credential
   } catch {
