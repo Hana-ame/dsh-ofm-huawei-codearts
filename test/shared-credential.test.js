@@ -307,3 +307,24 @@ test('writeSharedCredential 落盘为 0600', () => {
     fs.rmSync(ws.root, { recursive: true, force: true })
   }
 })
+test('本地更新（旧宿主自己刷了）会被发布到共享真源', async () => {
+  const ws = makeWorkspace()
+  try {
+    const refName = 'CODEARTS_ACCOUNT_C07CA597'
+    // 共享真源里是一把旧的；本地的「本地存储」是一把更新的（模拟未重启的旧宿主刚刷过）
+    const oldShared = freshCredential('OLDSHARED', 2)
+    writeSharedCredential(refName, oldShared, ws.env)
+    const newerLocal = freshCredential('NEWLOCAL', 20)
+    const file = path.join(ws.local, 'home-0', 'credential.json')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, JSON.stringify(newerLocal), { mode: 0o600 })
+
+    const result = await runInstance(ws.env, refName, { CODEARTS_LOCAL_FILE: file })
+    assert.equal(result.refreshed, false, '两把都够新，不应真续期')
+    const shared = readSharedCredential(refName, ws.env)
+    assert.equal(shared.refresh_token, newerLocal.refresh_token,
+      '本地更新的一把必须被发布到共享真源，否则后续实例会拿到旧 token')
+  } finally {
+    fs.rmSync(ws.root, { recursive: true, force: true })
+  }
+})

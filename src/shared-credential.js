@@ -252,8 +252,12 @@ export async function coordinateRefresh(params) {
       log.push(`[codearts] 初始化共享凭据真源（${refName}）`)
     }
 
-    // ① 采纳：共享那份更新 → 先镜像回本地（这样设置页/账号池也看到新的）
+    // ① 双向对齐：谁新谁是「真源」，并把真源推给另一边。
+    //    - 共享更新（他处已续期）→ 采纳 + 镜像回本地；
+    //    - 本地更新（例如尚未重启的旧宿主自己刷了）→ **发布到共享**，
+    //      否则共享会停在旧代次，下一次启动的实例会把旧 token 当真源。
     const newer = pickNewerCredential(local, shared)
+    const localIsNewer = pickNewerCredential(shared, local) !== undefined
     let current = local
     let adopted = false
     if (newer !== undefined) {
@@ -261,6 +265,11 @@ export async function coordinateRefresh(params) {
       current = newer
       adopted = true
       log.push(`[codearts] 采纳共享凭据（${refName}，他处已续期）`)
+    } else if (local !== undefined && localIsNewer) {
+      writeSharedCredential(refName, local, env)
+      log.push(`[codearts] 本地凭据更新，发布到共享真源（${refName}）`)
+    } else if (current === undefined) {
+      current = shared
     }
 
     if (current === undefined) return { credential: undefined, refreshed: false, adopted }

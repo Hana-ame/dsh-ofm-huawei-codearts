@@ -29186,6 +29186,7 @@ async function coordinateRefresh(params) {
       log.push(`[codearts] \u521D\u59CB\u5316\u5171\u4EAB\u51ED\u636E\u771F\u6E90\uFF08${refName}\uFF09`);
     }
     const newer = pickNewerCredential(local, shared);
+    const localIsNewer = pickNewerCredential(shared, local) !== void 0;
     let current = local;
     let adopted = false;
     if (newer !== void 0) {
@@ -29193,6 +29194,11 @@ async function coordinateRefresh(params) {
       current = newer;
       adopted = true;
       log.push(`[codearts] \u91C7\u7EB3\u5171\u4EAB\u51ED\u636E\uFF08${refName}\uFF0C\u4ED6\u5904\u5DF2\u7EED\u671F\uFF09`);
+    } else if (local !== void 0 && localIsNewer) {
+      writeSharedCredential(refName, local, env);
+      log.push(`[codearts] \u672C\u5730\u51ED\u636E\u66F4\u65B0\uFF0C\u53D1\u5E03\u5230\u5171\u4EAB\u771F\u6E90\uFF08${refName}\uFF09`);
+    } else if (current === void 0) {
+      current = shared;
     }
     if (current === void 0) return { credential: void 0, refreshed: false, adopted };
     const stillUsable = Number.isFinite(expiresAtMsOf(current)) && expiresAtMsOf(current) - nowMs > 6e4;
